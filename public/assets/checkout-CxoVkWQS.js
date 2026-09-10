@@ -1,0 +1,1 @@
+import{l as o}from"./index-BHPdvlM3.js";function n(t){return o("/api/checkout",{method:"POST",body:JSON.stringify(t)})}function c(t,e){return o("/api/checkout/process",{method:"POST",body:JSON.stringify({order_code:t,form_data:e})})}function s(t){return o(`/api/orders/${encodeURIComponent(t)}`)}export{s as f,c as p,n as s};

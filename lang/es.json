@@ -1,0 +1,61 @@
+{
+    "Dashboard": "Panel",
+    "Search": "Buscar",
+    "Repository": "Repositorio",
+    "Documentation": "Documentación",
+    "Platform": "Plataforma",
+    "Settings": "Configuración",
+    "Log out": "Cerrar sesión",
+    "Profile": "Perfil",
+    "Password": "Contraseña",
+    "Appearance": "Apariencia",
+    "Security": "Seguridad",
+    "Delete account": "Eliminar cuenta",
+    "Delete your account and all of its resources": "Eliminar tu cuenta y todos sus recursos",
+    "Cancel": "Cancelar",
+    "Save": "Guardar",
+    "Saved.": "Guardado.",
+    "Name": "Nombre",
+    "Email": "Correo electrónico",
+    "Current password": "Contraseña actual",
+    "New password": "Nueva contraseña",
+    "Confirm password": "Confirmar contraseña",
+    "Remember me": "Recordarme",
+    "Forgot your password?": "¿Olvidaste tu contraseña?",
+    "Log in": "Iniciar sesión",
+    "Iniciar sesión": "Iniciar sesión",
+    "Ingresa tu correo y contraseña para acceder al panel OPEN9": "Ingresa tu correo y contraseña para acceder al panel OPEN9",
+    "Ver sitio público": "Ver sitio público",
+    "Register": "Registrarse",
+    "Already registered?": "¿Ya tienes cuenta?",
+    "Create account": "Crear cuenta",
+    "Forgot password": "Olvidé mi contraseña",
+    "Reset password": "Restablecer contraseña",
+    "Email password reset link": "Enviar enlace para restablecer contraseña",
+    "Verify email": "Verificar correo electrónico",
+    "Resend verification email": "Reenviar correo de verificación",
+    "A new verification link has been sent to the email address you provided during registration.": "Se envió un nuevo enlace de verificación al correo que indicaste durante el registro.",
+    "Profile information": "Información del perfil",
+    "Update your name and email address": "Actualiza tu nombre y correo electrónico",
+    "Update password": "Actualizar contraseña",
+    "Ensure your account is using a long, random password to stay secure": "Asegúrate de usar una contraseña larga y aleatoria para mantener tu cuenta segura",
+    "Light": "Claro",
+    "Dark": "Oscuro",
+    "System": "Sistema"
+    ,"Passkeys": "Llaves de acceso"
+    ,"No passkeys yet": "Aún no hay llaves de acceso"
+    ,"Two-factor authentication": "Autenticación de dos factores"
+    ,"Enable 2FA": "Activar 2FA"
+    ,"Disable 2FA": "Desactivar 2FA"
+    ,"Confirm": "Confirmar"
+    ,"Manage your passkeys for passwordless sign-in": "Administra tus llaves de acceso para iniciar sesión sin contraseña"
+    ,"Add a passkey to sign in without a password": "Agrega una llave de acceso para iniciar sesión sin contraseña"
+    ,"Remove passkey": "Eliminar llave de acceso"
+    ,"Are you sure you want to remove the passkey \":name\"? You will no longer be able to use it to sign in.": "¿Seguro que deseas eliminar la llave de acceso \":name\"? Ya no podrás usarla para iniciar sesión."
+    ,"Two-factor authentication enabled": "Autenticación de dos factores activada"
+    ,"Two-factor authentication is now enabled. Scan the QR code or enter the setup key in your authenticator app.": "La autenticación de dos factores está activada. Escanea el código QR o ingresa la clave de configuración en tu app de autenticación."
+    ,"Close": "Cerrar"
+    ,"Recovery codes let you regain access if you lose your 2FA device. Store them in a secure password manager.": "Los códigos de recuperación te permiten recuperar el acceso si pierdes tu dispositivo 2FA. Guárdalos en un gestor de contraseñas seguro."
+    ,"Recovery codes": "Códigos de recuperación"
+    ,"Are you sure you want to delete your account?": "¿Seguro que deseas eliminar tu cuenta?"
+}
