@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Enums\PublishStatus;
 use App\Enums\RecordStatus;
 use App\Models\AiChatSetting;
+use App\Models\BlogCategory;
 use App\Models\BlogPost;
 use App\Models\FooterLinkGroup;
 use App\Models\HomeFeatureCard;
@@ -21,7 +22,9 @@ use App\Models\LegalPage;
 use App\Models\PaymentSetting;
 use App\Models\Product;
 use App\Models\ProductBrand;
+use App\Models\ProductCategory;
 use App\Models\Project;
+use App\Models\ProjectCategory;
 use App\Models\Service;
 use App\Models\Setting;
 use App\Models\SiteBranding;
@@ -359,17 +362,39 @@ class SiteConfigService
     }
 
     /**
-     * @return list<array<string, mixed>>
+     * @return array{data: array<int, array<string, mixed>>, meta: array{current_page: int, last_page: int, total: int}}
      */
-    public function blogPosts(): array
+    public function blogPosts(?string $search = null, ?string $categorySlug = null, int $page = 1, int $perPage = 9): array
     {
-        return BlogPost::query()
+        $paginator = BlogPost::query()
             ->where('status', PublishStatus::Published)
+            ->when($search, function (Builder $query) use ($search): void {
+                $query->where(function (Builder $inner) use ($search): void {
+                    $inner->where('title', 'like', "%{$search}%")
+                        ->orWhere('excerpt', 'like', "%{$search}%");
+                });
+            })
+            ->when($categorySlug, function (Builder $query) use ($categorySlug): void {
+                $query->whereHas(
+                    'category',
+                    fn (Builder $category): Builder => $category->where('slug', $categorySlug)->where('status', RecordStatus::Active)
+                );
+            })
             ->with(['category', 'author'])
             ->orderByDesc('published_at')
-            ->get()
-            ->map(fn (BlogPost $post): array => $this->formatBlogPost($post))
-            ->all();
+            ->paginate($perPage, ['*'], 'page', max(1, $page));
+
+        return [
+            'data' => collect($paginator->items())
+                ->map(fn (BlogPost $post): array => $this->formatBlogPost($post))
+                ->values()
+                ->all(),
+            'meta' => [
+                'current_page' => $paginator->currentPage(),
+                'last_page' => $paginator->lastPage(),
+                'total' => $paginator->total(),
+            ],
+        ];
     }
 
     /**
@@ -387,16 +412,51 @@ class SiteConfigService
     }
 
     /**
-     * @return list<array<string, mixed>>
+     * @return array{data: array<int, array<string, mixed>>, meta: array{current_page: int, last_page: int, total: int}}
      */
-    public function projects(): array
+    public function projects(?string $categorySlug = null, ?string $search = null, int $page = 1, int $perPage = 9): array
     {
-        return Project::query()
+        $paginator = Project::query()
             ->where('status', PublishStatus::Published)
+            ->when($categorySlug, function (Builder $query) use ($categorySlug): void {
+                $query->whereHas(
+                    'category',
+                    fn (Builder $category): Builder => $category->where('slug', $categorySlug)->where('status', RecordStatus::Active)
+                );
+            })
+            ->when($search, fn (Builder $query) => $query->where('title', 'like', "%{$search}%"))
             ->with('category')
             ->orderByDesc('published_at')
-            ->get()
-            ->map(fn (Project $project): array => $this->formatProject($project))
+            ->paginate($perPage, ['*'], 'page', max(1, $page));
+
+        return [
+            'data' => collect($paginator->items())
+                ->map(fn (Project $project): array => $this->formatProject($project))
+                ->values()
+                ->all(),
+            'meta' => [
+                'current_page' => $paginator->currentPage(),
+                'last_page' => $paginator->lastPage(),
+                'total' => $paginator->total(),
+            ],
+        ];
+    }
+
+    /**
+     * @return array<int, array{name: string, slug: string}>
+     */
+    public function projectCategories(): array
+    {
+        return ProjectCategory::query()
+            ->where('status', RecordStatus::Active)
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get(['name', 'slug'])
+            ->map(fn (ProjectCategory $category): array => [
+                'name' => $category->name,
+                'slug' => $category->slug,
+            ])
+            ->values()
             ->all();
     }
 
@@ -450,11 +510,54 @@ class SiteConfigService
     }
 
     /**
-     * @return list<array<string, mixed>>
+     * @return array<int, array{name: string, slug: string}>
      */
-    public function products(?string $brandSlug = null): array
+    public function productCategories(): array
     {
-        return Product::query()
+        return ProductCategory::query()
+            ->where('status', RecordStatus::Active)
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get(['name', 'slug'])
+            ->map(fn (ProductCategory $category): array => [
+                'name' => $category->name,
+                'slug' => $category->slug,
+            ])
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @return array<int, array{name: string, slug: string}>
+     */
+    public function blogCategories(): array
+    {
+        return BlogCategory::query()
+            ->where('status', RecordStatus::Active)
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get(['name', 'slug'])
+            ->map(fn (BlogCategory $category): array => [
+                'name' => $category->name,
+                'slug' => $category->slug,
+            ])
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @return array{data: array<int, array<string, mixed>>, meta: array{current_page: int, last_page: int, total: int}}
+     */
+    public function products(
+        ?string $brandSlug = null,
+        ?string $categorySlug = null,
+        ?string $search = null,
+        ?string $sort = null,
+        bool $inStockOnly = false,
+        int $page = 1,
+        int $perPage = 12,
+    ): array {
+        $paginator = Product::query()
             ->where('status', PublishStatus::Published)
             ->with(['category', 'brand'])
             ->when($brandSlug, function (Builder $query) use ($brandSlug): void {
@@ -463,10 +566,39 @@ class SiteConfigService
                     fn (Builder $brand): Builder => $brand->where('slug', $brandSlug)->where('status', RecordStatus::Active)
                 );
             })
-            ->orderBy('sort_order')
-            ->get()
-            ->map(fn (Product $product): array => $this->formatProduct($product))
-            ->all();
+            ->when($categorySlug, function (Builder $query) use ($categorySlug): void {
+                $query->whereHas(
+                    'category',
+                    fn (Builder $category): Builder => $category->where('slug', $categorySlug)->where('status', RecordStatus::Active)
+                );
+            })
+            ->when($search, fn (Builder $query) => $query->where('name', 'like', "%{$search}%"))
+            ->when($inStockOnly, function (Builder $query): void {
+                $query->where(fn (Builder $stock) => $stock->whereNull('stock')->orWhere('stock', '>', 0));
+            })
+            ->when(
+                in_array($sort, ['price_asc', 'price_desc', 'name'], true),
+                fn (Builder $query) => match ($sort) {
+                    'price_asc' => $query->orderBy('price'),
+                    'price_desc' => $query->orderByDesc('price'),
+                    'name' => $query->orderBy('name'),
+                    default => $query,
+                },
+                fn (Builder $query) => $query->orderBy('sort_order'),
+            )
+            ->paginate($perPage, ['*'], 'page', max(1, $page));
+
+        return [
+            'data' => collect($paginator->items())
+                ->map(fn (Product $product): array => $this->formatProduct($product))
+                ->values()
+                ->all(),
+            'meta' => [
+                'current_page' => $paginator->currentPage(),
+                'last_page' => $paginator->lastPage(),
+                'total' => $paginator->total(),
+            ],
+        ];
     }
 
     /**
@@ -494,6 +626,7 @@ class SiteConfigService
             'title' => $post->title,
             'excerpt' => $post->excerpt,
             'category' => $post->category?->name ?? '',
+            'category_slug' => $post->category?->slug ?? '',
             'tags' => $post->relationLoaded('tags') ? $post->tags->pluck('name')->all() : [],
             'date' => $post->published_at?->format('d M Y') ?? '',
             'readTime' => ($post->reading_time ?? 5).' min',
@@ -520,6 +653,7 @@ class SiteConfigService
             'slug' => $project->slug,
             'title' => $project->title,
             'category' => $project->category?->name ?? '',
+            'category_slug' => $project->category?->slug ?? '',
             'year' => $project->published_at?->format('Y') ?? '',
             'description' => $project->short_description ?? $project->description,
             'tags' => $project->technology_stack ?? [],
@@ -561,6 +695,7 @@ class SiteConfigService
             'slug' => $product->slug,
             'name' => $product->name,
             'category' => $product->category?->name,
+            'category_slug' => $product->category?->slug,
             'brand' => $product->brand?->name,
             'brand_slug' => $product->brand?->slug,
             'brand_image_url' => $this->media->url($product->brand?->image),

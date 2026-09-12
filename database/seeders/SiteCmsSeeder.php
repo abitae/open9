@@ -223,6 +223,7 @@ class SiteCmsSeeder extends Seeder
             ['step_number' => 1, 'title' => 'Diagnóstico', 'description' => 'Mapeamos tus procesos actuales: qué se hace a mano, dónde se pierde tiempo y qué duele de verdad.', 'icon' => 'Search', 'sort_order' => 1],
             ['step_number' => 2, 'title' => 'Diseño', 'description' => 'Proponemos automatizaciones, agentes y paneles con un plan claro de implementación y retorno.', 'icon' => 'PenTool', 'sort_order' => 2],
             ['step_number' => 3, 'title' => 'Puesta en marcha', 'description' => 'Implementamos, integramos tus herramientas y dejamos al equipo operando con soporte cercano.', 'icon' => 'Rocket', 'sort_order' => 3],
+            ['step_number' => 4, 'title' => 'Seguimiento', 'description' => 'Medimos resultados, ajustamos lo necesario y acompañamos la mejora continua para sostener el retorno.', 'icon' => 'ClipboardList', 'sort_order' => 4],
         ];
 
         foreach ($steps as $step) {

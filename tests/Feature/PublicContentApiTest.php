@@ -81,7 +81,7 @@ it('lists published projects and hides drafts', function (): void {
         'status' => 'draft',
     ]);
 
-    $response = $this->getJson('/api/projects')->assertOk();
+    $response = $this->getJson('/api/projects?per_page=50')->assertOk();
 
     $slugs = collect($response->json('data'))->pluck('slug');
 

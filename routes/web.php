@@ -158,11 +158,5 @@ Route::redirect('/login', '/ingresar');
 Route::redirect('/register', '/registro');
 
 Route::get('/{any?}', function () {
-    $index = public_path('index.html');
-
-    if (file_exists($index)) {
-        return response()->file($index);
-    }
-
-    return view('welcome');
+    return view('app');
 })->where('any', '^(?!admin|api|storage|up|livewire|flux|vendor|cursos|certificados|settings).*$')->name('home');

@@ -13,9 +13,24 @@ class ContentController extends Controller
         private readonly SiteConfigService $siteConfig,
     ) {}
 
-    public function blog(): JsonResponse
+    public function blog(Request $request): JsonResponse
     {
-        return response()->json(['data' => $this->siteConfig->blogPosts()]);
+        $search = $request->string('search')->trim()->toString();
+        $category = $request->string('category')->trim()->toString();
+        $page = max(1, $request->integer('page', 1));
+
+        return response()->json(
+            $this->siteConfig->blogPosts(
+                $search !== '' ? $search : null,
+                $category !== '' ? $category : null,
+                $page
+            )
+        );
+    }
+
+    public function blogCategories(): JsonResponse
+    {
+        return response()->json(['data' => $this->siteConfig->blogCategories()]);
     }
 
     public function blogShow(string $slug): JsonResponse
@@ -29,9 +44,24 @@ class ContentController extends Controller
         return response()->json($post);
     }
 
-    public function projects(): JsonResponse
+    public function projects(Request $request): JsonResponse
     {
-        return response()->json(['data' => $this->siteConfig->projects()]);
+        $category = $request->string('category')->trim()->toString();
+        $search = $request->string('search')->trim()->toString();
+        $page = max(1, $request->integer('page', 1));
+        $perPage = min(50, max(1, $request->integer('per_page', 9)));
+
+        return response()->json($this->siteConfig->projects(
+            categorySlug: $category !== '' ? $category : null,
+            search: $search !== '' ? $search : null,
+            page: $page,
+            perPage: $perPage,
+        ));
+    }
+
+    public function projectCategories(): JsonResponse
+    {
+        return response()->json(['data' => $this->siteConfig->projectCategories()]);
     }
 
     public function projectShow(string $slug): JsonResponse
@@ -53,15 +83,29 @@ class ContentController extends Controller
     public function products(Request $request): JsonResponse
     {
         $brand = $request->string('brand')->trim()->toString();
+        $category = $request->string('category')->trim()->toString();
+        $search = $request->string('search')->trim()->toString();
+        $sort = $request->string('sort')->trim()->toString();
+        $page = max(1, $request->integer('page', 1));
 
-        return response()->json([
-            'data' => $this->siteConfig->products($brand !== '' ? $brand : null),
-        ]);
+        return response()->json($this->siteConfig->products(
+            brandSlug: $brand !== '' ? $brand : null,
+            categorySlug: $category !== '' ? $category : null,
+            search: $search !== '' ? $search : null,
+            sort: $sort !== '' ? $sort : null,
+            inStockOnly: $request->boolean('in_stock'),
+            page: $page,
+        ));
     }
 
     public function productBrands(): JsonResponse
     {
         return response()->json(['data' => $this->siteConfig->productBrands()]);
+    }
+
+    public function productCategories(): JsonResponse
+    {
+        return response()->json(['data' => $this->siteConfig->productCategories()]);
     }
 
     public function productShow(string $slug): JsonResponse

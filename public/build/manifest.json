@@ -52,12 +52,21 @@
     "src": "_instrument-sans-600-normal-DMks36a2.woff"
   },
   "resources/css/app.css": {
-    "file": "assets/app-C6rAOByb.css",
+    "file": "assets/app-DmHgYMl0.css",
     "name": "app",
     "names": [
       "app.css"
     ],
     "src": "resources/css/app.css",
+    "isEntry": true
+  },
+  "resources/css/react-app.css": {
+    "file": "assets/react-app-CeZWU57R.css",
+    "name": "react-app",
+    "names": [
+      "react-app.css"
+    ],
+    "src": "resources/css/react-app.css",
     "isEntry": true
   },
   "resources/js/app.js": {
@@ -70,6 +79,12 @@
     "file": "assets/passkeys-ZWACIUjA.js",
     "name": "passkeys",
     "src": "resources/js/passkeys.js",
+    "isEntry": true
+  },
+  "resources/react/main.jsx": {
+    "file": "assets/main-CW0aTKDr.js",
+    "name": "main",
+    "src": "resources/react/main.jsx",
     "isEntry": true
   }
 }

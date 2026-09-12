@@ -1,0 +1,314 @@
+@import 'tailwindcss';
+
+@source '../react';
+
+@theme {
+    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+    --font-display: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif;
+
+    /* Colores de marca confirmados en resources/css/app.css y public/index.html (theme-color). */
+    --color-brand: #0077ff;
+    --color-brand-dark: #0044aa;
+    --color-open9-black: #0d0d0d;
+    --color-tech-accent: #0077ff;
+}
+
+html {
+    font-family: var(--font-sans);
+    background-color: var(--color-open9-black);
+    color: #f5f5f5;
+    /* El sitio público es solo oscuro (sin modo claro); sin esto, el navegador
+       renderiza el desplegable nativo de <select> (y otros controles nativos)
+       con su UI clara por defecto, dejando texto blanco sobre fondo blanco. */
+    color-scheme: dark;
+}
+
+body {
+    margin: 0;
+}
+
+a {
+    color: inherit;
+}
+
+/* Todo lo de abajo va en la capa `components` de Tailwind (y no como CSS
+   plano después del @import) para que las utilidades normales (`md:hidden`,
+   `hidden sm:inline-flex`, etc.) sigan pudiendo sobreescribirlas sin
+   necesitar `!important`. Sin esto, estas reglas quedan después de la capa
+   `utilities` en el orden final y ganan por orden de aparición aunque la
+   utilidad sea más específica en intención (p. ej. el botón de menú móvil
+   se veía también en escritorio pese a llevar `md:hidden`). */
+@layer components {
+    .btn-primary {
+        @apply inline-flex items-center justify-center gap-2 rounded-full bg-brand px-6 py-3 text-sm font-semibold text-white transition duration-200 hover:scale-[1.02] hover:bg-brand-dark active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100;
+    }
+
+    .btn-secondary {
+        @apply inline-flex items-center justify-center gap-2 rounded-full border border-white/20 px-6 py-3 text-sm font-semibold text-white transition duration-200 hover:scale-[1.02] hover:border-white/40 hover:bg-white/5 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100;
+    }
+
+    .btn-ghost {
+        @apply inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-medium text-white/70 transition hover:text-white;
+    }
+
+    .badge-tech {
+        @apply inline-flex items-center gap-1.5 rounded-full border border-tech-accent/30 bg-tech-accent/10 px-3 py-1 text-xs font-medium text-tech-accent;
+    }
+
+    .icon-tile {
+        @apply flex items-center justify-center rounded-xl border border-tech-accent/30 bg-tech-accent/10 text-tech-accent;
+    }
+
+    .badge-tech-live::before {
+        content: '';
+        @apply size-1.5 rounded-full bg-tech-accent;
+    }
+
+    .filter-pill {
+        @apply inline-flex items-center rounded-full border border-white/15 px-4 py-1.5 text-sm text-white/70 transition hover:border-white/30 hover:text-white;
+    }
+
+    .filter-pill-active {
+        @apply border-brand bg-brand/20 text-white;
+    }
+
+    .card-hover {
+        @apply transition duration-200 hover:-translate-y-1 hover:shadow-xl hover:shadow-black/30;
+    }
+
+    .nav-blur {
+        @apply backdrop-blur-md;
+        background-color: rgb(13 13 13 / 0.7);
+    }
+
+    .nav-scrolled {
+        @apply border-b border-white/10;
+    }
+
+    .nav-link {
+        @apply relative text-sm font-medium text-white/70 transition-colors hover:text-white;
+    }
+
+    .nav-link::after {
+        content: '';
+        @apply absolute -bottom-1.5 left-0 h-0.5 w-full origin-left scale-x-0 rounded-full bg-brand transition-transform duration-300 ease-out;
+    }
+
+    .nav-link:hover::after {
+        @apply scale-x-100;
+    }
+
+    .nav-link-active {
+        @apply text-white;
+    }
+
+    .nav-link-active::after {
+        @apply scale-x-100;
+    }
+
+    .hero-headline {
+        @apply text-4xl font-bold tracking-tight text-white sm:text-5xl lg:text-6xl;
+    }
+
+    .hero-orb {
+        @apply pointer-events-none absolute rounded-full bg-brand/30 blur-3xl;
+        animation: orb-float 10s ease-in-out infinite;
+    }
+
+    .hero-orb:nth-of-type(2) {
+        animation-duration: 13s;
+        animation-delay: -4s;
+    }
+
+    .hero-stats {
+        @apply grid grid-cols-2 gap-6 sm:grid-cols-4;
+    }
+
+    .ai-chat-fab {
+        @apply fixed bottom-6 right-6 z-40 flex items-center gap-2 rounded-full bg-brand px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-brand/30 transition hover:bg-brand-dark;
+    }
+
+    .ai-chat-panel {
+        @apply fixed bottom-24 right-6 z-40 flex h-[32rem] w-[22rem] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-2xl border border-white/10 bg-open9-black shadow-2xl;
+    }
+
+    .contact-form-field {
+        @apply grid gap-1.5;
+    }
+
+    .contact-input {
+        @apply rounded-lg border border-white/15 bg-white/5 px-4 py-2.5 text-sm text-white placeholder:text-white/40 focus:border-brand focus:outline-none;
+    }
+
+    /* Refuerzo explícito para el menú desplegable de <select>: algunos
+       navegadores no aplican `color-scheme` a las <option> si además llevan
+       estilos propios de fondo/texto en el elemento. */
+    select.contact-input option {
+        background-color: var(--color-open9-black);
+        color: #f5f5f5;
+    }
+
+    .skip-link {
+        @apply sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-white focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-open9-black;
+    }
+
+    .terminal-card {
+        @apply overflow-hidden rounded-2xl border border-white/10 shadow-xl;
+        background: #0a0a0a;
+    }
+
+    .terminal-card-bar {
+        @apply flex items-center gap-2 border-b border-white/10 bg-white/5 px-4 py-3;
+    }
+
+    .terminal-dot {
+        @apply size-3 rounded-full;
+    }
+
+    .terminal-cursor {
+        @apply ml-1 inline-block h-4 w-2 align-middle bg-brand;
+        animation: terminal-blink 1s step-end infinite;
+    }
+
+    .preloader {
+        @apply fixed inset-0 z-[100] flex flex-col items-center justify-center gap-4 bg-open9-black transition-opacity duration-500;
+    }
+
+    .preloader-hidden {
+        @apply pointer-events-none opacity-0;
+    }
+
+    .preloader-rocket-track {
+        @apply flex h-40 w-24 items-end justify-center overflow-hidden;
+    }
+
+    .preloader-rocket {
+        @apply size-16;
+        animation: rocket-launch 1.6s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+    }
+
+    .rocket-flame {
+        transform-origin: 50% 108px;
+        animation: rocket-flame-flicker 0.35s ease-in-out infinite alternate;
+    }
+
+    .preloader-label {
+        @apply text-xs font-bold tracking-[0.35em] text-white/70;
+        animation: pulse-soft 1.6s ease-in-out infinite;
+    }
+
+    .rocket-decoration {
+        @apply pointer-events-none absolute opacity-[0.12];
+        animation: rocket-drift 9s ease-in-out infinite;
+    }
+}
+
+/* Animaciones sutiles ------------------------------------------------- */
+
+@keyframes orb-float {
+    0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+    50% { transform: translate3d(0, -18px, 0) scale(1.05); }
+}
+
+@keyframes fade-up {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes pop-in {
+    from { opacity: 0; transform: translateY(8px) scale(0.98); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes terminal-blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+}
+
+@keyframes rocket-launch {
+    0% { transform: translateY(52px) scale(0.9); opacity: 0; }
+    18% { opacity: 1; }
+    75% { transform: translateY(-64px) scale(1); opacity: 1; }
+    100% { transform: translateY(-96px) scale(0.9); opacity: 0; }
+}
+
+@keyframes rocket-flame-flicker {
+    from { transform: scaleY(0.85) scaleX(0.92); }
+    to { transform: scaleY(1.15) scaleX(1.05); }
+}
+
+@keyframes pulse-soft {
+    0%, 100% { opacity: 0.5; }
+    50% { opacity: 1; }
+}
+
+@keyframes rocket-drift {
+    0%, 100% { transform: translate(0, 0) rotate(-8deg); }
+    50% { transform: translate(-10px, -22px) rotate(-4deg); }
+}
+
+/* Revela una sección con fade+slide la primera vez que entra al viewport
+   (ver components/Reveal.jsx). Empieza oculta para evitar parpadeos si JS
+   tarda en montar, y siempre queda visible sin JS (progressive enhancement). */
+.reveal {
+    opacity: 0;
+    transform: translateY(16px);
+    transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+}
+
+.reveal.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.page-fade {
+    animation: fade-in 0.25s ease-out both;
+}
+
+.hero-enter {
+    animation: fade-up 0.7s ease-out both;
+}
+
+.ai-chat-panel {
+    animation: pop-in 0.2s ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .hero-orb {
+        animation: none;
+    }
+
+    .reveal {
+        opacity: 1;
+        transform: none;
+        transition: none;
+    }
+
+    .page-fade,
+    .hero-enter,
+    .ai-chat-panel {
+        animation: none;
+    }
+
+    .terminal-cursor {
+        animation: none;
+    }
+
+    .preloader-rocket,
+    .rocket-flame,
+    .preloader-label,
+    .rocket-decoration {
+        animation: none;
+    }
+
+    .btn-primary,
+    .btn-secondary,
+    .card-hover {
+        transition: none;
+    }
+}
