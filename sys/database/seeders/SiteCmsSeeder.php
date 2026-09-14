@@ -400,31 +400,12 @@ class SiteCmsSeeder extends Seeder
 
     private function seedLegalPages(): void
     {
-        $pages = [
-            'privacidad' => [
-                'title' => 'Política de Privacidad',
-                'intro' => 'En OPEN9 protegemos los datos de clientes, prospectos y usuarios de nuestros sistemas de automatización e inteligencia artificial.',
-            ],
-            'terminos' => [
-                'title' => 'Términos y Condiciones',
-                'intro' => 'Estos términos regulan el uso del sitio open9.dev y la contratación de servicios de automatización, software e inteligencia artificial.',
-            ],
-            'cookies' => [
-                'title' => 'Política de Cookies',
-                'intro' => 'Usamos cookies técnicas y de medición para operar el sitio, recordar preferencias y mejorar la experiencia de navegación.',
-            ],
-        ];
-
-        foreach ($pages as $slug => $page) {
+        foreach (LegalPageContent::all() as $slug => $page) {
             LegalPage::query()->updateOrCreate(['slug' => $slug], [
                 'title' => $page['title'],
                 'status' => 'published',
                 'published_at' => now(),
-                'blocks' => [
-                    ['type' => 'heading', 'content' => $page['title']],
-                    ['type' => 'paragraph', 'content' => $page['intro']],
-                    ['type' => 'paragraph', 'content' => 'Para ejercer derechos ARCO o consultas sobre tratamiento de datos, escríbenos a empresario.ia@open9.dev.'],
-                ],
+                'blocks' => $page['blocks'],
             ]);
         }
     }

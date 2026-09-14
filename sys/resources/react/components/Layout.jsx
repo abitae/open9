@@ -1,5 +1,6 @@
 import { Outlet, useLocation } from 'react-router-dom';
 import ChatWidget from './ChatWidget';
+import CookieBanner from './CookieBanner';
 import Footer from './Footer';
 import Nav from './Nav';
 import ScrollToTop from './ScrollToTop';
@@ -18,6 +19,7 @@ export default function Layout() {
                 </div>
             </main>
             <Footer />
+            <CookieBanner />
             <ChatWidget />
         </div>
     );

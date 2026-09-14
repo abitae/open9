@@ -18,6 +18,7 @@ class OrderService
     public function __construct(
         private readonly UniqueCodeService $codes,
         private readonly SiteConfigService $site,
+        private readonly OrderIntegrityService $integrity,
     ) {}
 
     /**
@@ -59,6 +60,9 @@ class OrderService
                 ]);
             }
 
+            $order = $order->fresh('items');
+            $this->integrity->assign($order);
+
             return $order->fresh('items');
         });
     }
@@ -78,6 +82,17 @@ class OrderService
                 return false;
             }
 
+            $locked->loadMissing('items');
+
+            if (! $this->integrity->verify($locked)) {
+                Log::warning('Integridad de pedido inválida; no se confirma el pago.', [
+                    'order' => $locked->order_code,
+                ]);
+
+                return false;
+            }
+
+            $locked->refresh();
             $locked->loadMissing('items');
 
             foreach ($locked->items as $item) {

@@ -11,6 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (Schema::hasColumn('orders', 'integrity_hash')) {
+            return;
+        }
+
         Schema::table('orders', function (Blueprint $table) {
             $table->string('integrity_hash', 64)->nullable()->after('notes');
         });
@@ -21,6 +25,10 @@ return new class extends Migration
      */
     public function down(): void
     {
+        if (! Schema::hasColumn('orders', 'integrity_hash')) {
+            return;
+        }
+
         Schema::table('orders', function (Blueprint $table) {
             $table->dropColumn('integrity_hash');
         });

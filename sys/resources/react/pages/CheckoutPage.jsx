@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Payment, initMercadoPago } from '@mercadopago/sdk-react';
 import { Link, useNavigate } from 'react-router-dom';
+import GoogleButton from '../components/GoogleButton';
 import PageHeader from '../components/PageHeader';
 import { api, ApiError } from '../lib/api';
 import { useAuth } from '../lib/auth';
@@ -133,6 +134,21 @@ export default function CheckoutPage() {
             <div className="mx-auto max-w-3xl px-4 pb-24 sm:px-6">
                 {!order ? (
                     <form onSubmit={handleCreateOrder} className="space-y-8">
+                        {!isAuthenticated && (
+                            <section>
+                                <h2 className="text-lg font-semibold text-white">Crea tu cuenta o ingresa</h2>
+                                <p className="mt-1 text-sm text-white/50">
+                                    Con Google rellenamos tus datos y guardamos el pedido en tu cuenta. También puedes continuar como invitado.
+                                </p>
+                                <div className="mt-4 space-y-4">
+                                    <GoogleButton label="Registrarme o ingresar con Google" redirectTo="/checkout" />
+                                    <div className="flex items-center gap-3 text-xs uppercase text-white/50">
+                                        <span className="h-px flex-1 bg-white/10" /> o como invitado <span className="h-px flex-1 bg-white/10" />
+                                    </div>
+                                </div>
+                            </section>
+                        )}
+
                         <section>
                             <h2 className="text-lg font-semibold text-white">Datos del comprador</h2>
                             <p className="mt-1 text-sm text-white/50">

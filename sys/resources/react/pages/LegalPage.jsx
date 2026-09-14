@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { api, ApiError } from '../lib/api';
+import { resetConsent } from '../lib/cookieConsent';
 
 export default function LegalPage() {
     const { slug } = useParams();
@@ -48,6 +49,11 @@ export default function LegalPage() {
                         : <p key={index} className="mt-4">{block.content}</p>
                 ))}
             </div>
+            {slug === 'cookies' && (
+                <button type="button" className="btn-secondary mt-10" onClick={resetConsent}>
+                    Cambiar preferencia de cookies
+                </button>
+            )}
         </article>
     );
 }

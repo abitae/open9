@@ -174,10 +174,20 @@ it('redirects /login to the public store login', function (): void {
 });
 
 it('returns published legal pages and 404 for unknown slugs', function (): void {
-    $this->getJson('/api/legal/terminos')
-        ->assertOk()
-        ->assertJsonPath('slug', 'terminos')
-        ->assertJsonPath('title', 'Términos y Condiciones');
+    foreach (['terminos' => 'Términos y Condiciones', 'privacidad' => 'Política de Privacidad', 'cookies' => 'Política de Cookies'] as $slug => $title) {
+        $response = $this->getJson('/api/legal/'.$slug)
+            ->assertOk()
+            ->assertJsonPath('slug', $slug)
+            ->assertJsonPath('title', $title);
+
+        $blocks = $response->json('blocks');
+        expect($blocks)->toBeArray();
+        expect(count($blocks))->toBeGreaterThan(6);
+
+        $types = collect($blocks)->pluck('type')->unique()->values()->all();
+        expect($types)->toContain('heading');
+        expect($types)->toContain('paragraph');
+    }
 
     $this->getJson('/api/legal/pagina-inexistente')
         ->assertNotFound()

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { consumeAuthRedirect } from '../components/GoogleButton';
 import { useAuth } from '../lib/auth';
 import { GOOGLE_AUTH_ERROR_MESSAGES } from '../lib/googleAuthErrors';
 
@@ -20,7 +21,8 @@ export default function AuthCallbackPage() {
         }
 
         if (token) {
-            loginWithToken(token).then(() => navigate('/cuenta', { replace: true }));
+            const next = consumeAuthRedirect('/cuenta');
+            loginWithToken(token).then(() => navigate(next, { replace: true }));
 
             return;
         }
