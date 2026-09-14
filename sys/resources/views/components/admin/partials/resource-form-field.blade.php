@@ -81,6 +81,8 @@
         <flux:error name="uploads.{{ $name }}" />
         <flux:error name="uploads.{{ $name }}.*" />
     </flux:field>
+@elseif ($type === 'number')
+    <flux:input size="sm" type="number" wire:model="form.{{ $name }}" :label="$field['label'] ?? $name" :step="$field['step'] ?? 'any'" />
 @else
     <flux:input size="sm" :type="$type" wire:model="form.{{ $name }}" :label="$field['label'] ?? $name" />
 @endif

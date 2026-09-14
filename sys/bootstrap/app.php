@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\EnsureClientEmailIsVerified;
 use App\Http\Middleware\EnsureClientIsActive;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -30,6 +31,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'permission' => PermissionMiddleware::class,
             'role_or_permission' => RoleOrPermissionMiddleware::class,
             'client.active' => EnsureClientIsActive::class,
+            'client.verified' => EnsureClientEmailIsVerified::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

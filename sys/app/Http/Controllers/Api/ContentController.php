@@ -82,6 +82,12 @@ class ContentController extends Controller
 
     public function products(Request $request): JsonResponse
     {
+        $ids = $this->requestedProductIds($request);
+
+        if ($ids !== []) {
+            return response()->json($this->siteConfig->productsByIds($ids));
+        }
+
         $brand = $request->string('brand')->trim()->toString();
         $category = $request->string('category')->trim()->toString();
         $search = $request->string('search')->trim()->toString();
@@ -96,6 +102,30 @@ class ContentController extends Controller
             inStockOnly: $request->boolean('in_stock'),
             page: $page,
         ));
+    }
+
+    /**
+     * @return list<int>
+     */
+    private function requestedProductIds(Request $request): array
+    {
+        $raw = $request->input('ids', []);
+
+        if (is_string($raw)) {
+            $raw = explode(',', $raw);
+        }
+
+        if (! is_array($raw)) {
+            return [];
+        }
+
+        return collect($raw)
+            ->map(fn (mixed $id): int => (int) $id)
+            ->filter(fn (int $id): bool => $id > 0)
+            ->unique()
+            ->take(50)
+            ->values()
+            ->all();
     }
 
     public function productBrands(): JsonResponse

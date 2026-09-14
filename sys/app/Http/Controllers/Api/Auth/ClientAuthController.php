@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\Auth;
 use App\Enums\RecordStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Client;
+use App\Services\EmailVerificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -13,6 +14,10 @@ use Illuminate\Validation\ValidationException;
 
 class ClientAuthController extends Controller
 {
+    public function __construct(
+        private readonly EmailVerificationService $verification,
+    ) {}
+
     public function register(Request $request): JsonResponse
     {
         $data = $request->validate([
@@ -29,10 +34,15 @@ class ClientAuthController extends Controller
             'phone' => $data['phone'] ?? null,
             'status' => 'active',
             'email_verified_at' => null,
-            'last_login_at' => now(),
         ]);
 
-        return $this->respondWithToken($client, 201);
+        $this->verification->send($client);
+
+        return response()->json([
+            'requires_verification' => true,
+            'email' => $client->email,
+            'message' => 'Te enviamos un código para confirmar tu correo.',
+        ], 201);
     }
 
     public function login(Request $request): JsonResponse
@@ -56,9 +66,53 @@ class ClientAuthController extends Controller
             ]);
         }
 
+        if (! $client->hasVerifiedEmail()) {
+            return response()->json([
+                'message' => 'Debes confirmar tu correo para continuar.',
+                'requires_verification' => true,
+                'email' => $client->email,
+            ], 403);
+        }
+
         $client->forceFill(['last_login_at' => now()])->save();
 
         return $this->respondWithToken($client);
+    }
+
+    public function verifyEmail(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'email' => ['required', 'email', 'max:255'],
+            'code' => ['required', 'string', 'regex:/^\d{6}$/'],
+        ]);
+
+        $client = Client::query()->where('email', $data['email'])->first();
+
+        if ($client === null || $client->status !== RecordStatus::Active || ! $this->verification->verify($client, $data['code'])) {
+            throw ValidationException::withMessages([
+                'code' => 'El código no es válido o ha expirado.',
+            ]);
+        }
+
+        $client->forceFill([
+            'email_verified_at' => now(),
+            'last_login_at' => now(),
+        ])->save();
+
+        return $this->respondWithToken($client);
+    }
+
+    public function resendVerification(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'email' => ['required', 'email', 'max:255'],
+        ]);
+
+        $this->verification->resend($data['email']);
+
+        return response()->json([
+            'message' => 'Si el correo está registrado y pendiente de confirmación, te enviamos un código.',
+        ]);
     }
 
     public function me(Request $request): JsonResponse
@@ -100,7 +154,7 @@ class ClientAuthController extends Controller
             'email' => $client->email,
             'phone' => $client->phone,
             'avatar' => $client->avatar,
-            'email_verified' => $client->email_verified_at !== null,
+            'email_verified' => $client->hasVerifiedEmail(),
         ];
     }
 }

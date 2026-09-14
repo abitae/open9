@@ -22,10 +22,15 @@ export function setToken(token) {
 }
 
 export class ApiError extends Error {
-    constructor(message, status, errors = null) {
+    constructor(message, status, errors = null, payload = null) {
         super(message);
         this.status = status;
         this.errors = errors;
+        this.payload = payload;
+    }
+
+    get requiresVerification() {
+        return Boolean(this.payload?.requires_verification);
     }
 }
 
@@ -70,6 +75,7 @@ async function request(path, { method = 'GET', body, auth = true, headers = {} }
             payload?.message ?? 'Ocurrió un error inesperado. Intenta de nuevo.',
             response.status,
             payload?.errors ?? null,
+            payload,
         );
     }
 

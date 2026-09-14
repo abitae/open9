@@ -204,7 +204,7 @@ return new class extends Migration
             $table->text('description')->nullable();
             $table->decimal('price', 12, 2);
             $table->string('currency', 3)->default('USD');
-            $table->unsignedInteger('stock')->default(0);
+            $table->integer('stock')->nullable();
             $table->string('badge')->nullable();
             $table->decimal('rating', 3, 2)->default(0);
             $table->string('main_image')->nullable();

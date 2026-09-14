@@ -230,6 +230,7 @@ it('renders every admin route with the seeded super admin', function (): void {
         'admin.product-brands.index',
         'admin.orders.index',
         'admin.payment-settings.index',
+        'admin.store-settings.index',
         'admin.clients.index',
         'admin.social-login.index',
     ])->each(fn (string $routeName) => $this->actingAs($admin)->get(route($routeName))->assertOk());

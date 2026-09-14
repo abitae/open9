@@ -18,6 +18,7 @@ import ProjectsPage from './pages/ProjectsPage';
 import RegisterPage from './pages/RegisterPage';
 import ServicesPage from './pages/ServicesPage';
 import StorePage from './pages/StorePage';
+import VerifyEmailPage from './pages/VerifyEmailPage';
 
 export const routes = [
     {
@@ -37,6 +38,7 @@ export const routes = [
             { path: '/checkout/resultado', element: <CheckoutResultPage /> },
             { path: '/ingresar', element: <LoginPage /> },
             { path: '/registro', element: <RegisterPage /> },
+            { path: '/verificar-email', element: <VerifyEmailPage /> },
             { path: '/auth/callback', element: <AuthCallbackPage /> },
             { path: '/cuenta', element: <ProtectedRoute><AccountPage /></ProtectedRoute> },
             { path: '/legal/:slug', element: <LegalPage /> },

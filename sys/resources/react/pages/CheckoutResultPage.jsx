@@ -7,9 +7,19 @@ const STATUS_LABELS = {
     approved: 'Pago aprobado',
     paid: 'Pago aprobado',
     pending: 'Pago pendiente',
+    unpaid: 'Pago pendiente',
     rejected: 'Pago rechazado',
+    failed: 'Pago rechazado',
     cancelled: 'Pedido cancelado',
 };
+
+function isPaid(order) {
+    return order?.payment_status === 'paid' || order?.status === 'confirmed';
+}
+
+function isPending(order) {
+    return order?.payment_status === 'pending' || order?.payment_status === 'unpaid';
+}
 
 export default function CheckoutResultPage() {
     const [searchParams] = useSearchParams();
@@ -21,16 +31,32 @@ export default function CheckoutResultPage() {
         if (!orderCode) {
             setNotFound(true);
 
-            return;
+            return undefined;
         }
 
-        api.get(`/orders/${orderCode}`, { auth: false })
-            .then(setOrder)
-            .catch((error) => {
-                if (error instanceof ApiError && error.status === 404) {
-                    setNotFound(true);
-                }
-            });
+        let attempts = 0;
+        let timer;
+
+        const load = () => {
+            api.get(`/orders/${orderCode}`, { auth: false })
+                .then((data) => {
+                    setOrder(data);
+
+                    if (isPending(data) && attempts < 8) {
+                        attempts += 1;
+                        timer = setTimeout(load, 2000);
+                    }
+                })
+                .catch((error) => {
+                    if (error instanceof ApiError && error.status === 404) {
+                        setNotFound(true);
+                    }
+                });
+        };
+
+        load();
+
+        return () => clearTimeout(timer);
     }, [orderCode]);
 
     if (notFound) {
@@ -46,12 +72,24 @@ export default function CheckoutResultPage() {
         return <div className="mx-auto max-w-2xl px-4 py-24 sm:px-6"><div className="h-40 animate-pulse rounded-2xl bg-white/5" /></div>;
     }
 
+    const paid = isPaid(order);
+
     return (
         <div className="mx-auto max-w-2xl px-4 py-24 text-center sm:px-6">
             <h1 className="text-2xl font-bold text-white">
                 {STATUS_LABELS[order.payment_status] ?? STATUS_LABELS[order.status] ?? 'Estado del pedido'}
             </h1>
             <p className="mt-2 text-white/60">Código de pedido: {order.order_code}</p>
+            {paid && (
+                <p className="mt-3 text-sm text-white/70">
+                    Enviamos la confirmación a tu correo.
+                </p>
+            )}
+            {isPending(order) && (
+                <p className="mt-3 text-sm text-white/60">
+                    Estamos confirmando tu pago. Esta página se actualiza sola en unos segundos.
+                </p>
+            )}
             <p className="mt-6 text-3xl font-bold text-white">{formatMoney(order.total, order.currency)}</p>
 
             <div className="mt-8 space-y-2 text-left">

@@ -5,6 +5,8 @@ import SafeImage from '../components/SafeImage';
 import { useCart } from '../lib/cart';
 import { flyRocketToCart } from '../lib/cartFx';
 import { formatMoney } from '../lib/format';
+import { useSite } from '../lib/site';
+import { isOutOfStock } from '../lib/stock';
 
 export default function ProductDetailPage() {
     const { slug } = useParams();
@@ -12,6 +14,7 @@ export default function ProductDetailPage() {
     const [notFound, setNotFound] = useState(false);
     const [activeImage, setActiveImage] = useState(null);
     const { addItem } = useCart();
+    const { site } = useSite();
 
     useEffect(() => {
         let active = true;
@@ -50,7 +53,7 @@ export default function ProductDetailPage() {
         return <div className="mx-auto max-w-4xl px-4 py-24 sm:px-6"><div className="h-64 animate-pulse rounded-2xl bg-white/5" /></div>;
     }
 
-    const outOfStock = product.stock !== null && product.stock <= 0;
+    const outOfStock = isOutOfStock(product, site);
 
     return (
         <div className="mx-auto grid max-w-5xl gap-10 px-4 py-16 sm:px-6 md:grid-cols-2">

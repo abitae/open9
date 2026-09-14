@@ -31,8 +31,28 @@ class Product extends Model
             'price' => 'decimal:2',
             'rating' => 'decimal:2',
             'gallery' => 'array',
+            'stock' => 'integer',
             'status' => PublishStatus::class,
         ];
+    }
+
+    public function canFulfill(int $quantity, bool $allowNegativeStock): bool
+    {
+        if ($allowNegativeStock || $this->stock === null) {
+            return true;
+        }
+
+        return (int) $this->stock >= $quantity;
+    }
+
+    public function applySale(int $quantity, bool $allowNegativeStock): void
+    {
+        if ($this->stock === null) {
+            return;
+        }
+
+        $remaining = (int) $this->stock - $quantity;
+        $this->stock = $allowNegativeStock ? $remaining : max(0, $remaining);
     }
 
     /**

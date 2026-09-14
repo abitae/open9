@@ -118,6 +118,11 @@ class GoogleAuthController extends Controller
             $client->status = RecordStatus::Active;
         }
 
+        $shouldInvalidatePassword = $client->exists
+            && $client->email_verified_at === null
+            && blank($client->google_id)
+            && filled($client->password);
+
         $client->name = $client->name ?: ($googleUser->getName() ?: Str::before($email, '@'));
         $client->google_id = $googleUser->getId();
         $client->avatar = $client->avatar ?: $googleUser->getAvatar();
@@ -126,8 +131,16 @@ class GoogleAuthController extends Controller
             $client->email_verified_at = now();
         }
 
+        if ($shouldInvalidatePassword) {
+            $client->password = null;
+        }
+
         $client->last_login_at = now();
         $client->save();
+
+        if ($shouldInvalidatePassword) {
+            $client->tokens()->delete();
+        }
 
         $token = $client->createToken('google')->plainTextToken;
 

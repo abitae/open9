@@ -121,6 +121,7 @@ class SiteConfigService
                 ],
                 'store' => [
                     'usd_pen_rate' => $this->usdPenRate(),
+                    'allow_negative_stock' => $this->allowsNegativeStock(),
                 ],
                 'payments' => [
                     'provider' => $payments->provider,
@@ -573,7 +574,7 @@ class SiteConfigService
                 );
             })
             ->when($search, fn (Builder $query) => $query->where('name', 'like', "%{$search}%"))
-            ->when($inStockOnly, function (Builder $query): void {
+            ->when($inStockOnly && ! $this->allowsNegativeStock(), function (Builder $query): void {
                 $query->where(fn (Builder $stock) => $stock->whereNull('stock')->orWhere('stock', '>', 0));
             })
             ->when(
@@ -597,6 +598,56 @@ class SiteConfigService
                 'current_page' => $paginator->currentPage(),
                 'last_page' => $paginator->lastPage(),
                 'total' => $paginator->total(),
+            ],
+        ];
+    }
+
+    /**
+     * Resuelve productos publicados por id (carrito/checkout), sin paginar.
+     *
+     * @param  list<int>  $ids
+     * @return array{data: array<int, array<string, mixed>>, meta: array{current_page: int, last_page: int, total: int}}
+     */
+    public function productsByIds(array $ids): array
+    {
+        $ids = collect($ids)
+            ->map(fn (mixed $id): int => (int) $id)
+            ->filter(fn (int $id): bool => $id > 0)
+            ->unique()
+            ->take(50)
+            ->values();
+
+        if ($ids->isEmpty()) {
+            return [
+                'data' => [],
+                'meta' => [
+                    'current_page' => 1,
+                    'last_page' => 1,
+                    'total' => 0,
+                ],
+            ];
+        }
+
+        $products = Product::query()
+            ->where('status', PublishStatus::Published)
+            ->whereIn('id', $ids->all())
+            ->with(['category', 'brand'])
+            ->get()
+            ->keyBy(fn (Product $product): int => (int) $product->getKey());
+
+        $data = $ids
+            ->map(fn (int $id): ?Product => $products->get($id))
+            ->filter()
+            ->map(fn (Product $product): array => $this->formatProduct($product))
+            ->values()
+            ->all();
+
+        return [
+            'data' => $data,
+            'meta' => [
+                'current_page' => 1,
+                'last_page' => 1,
+                'total' => count($data),
             ],
         ];
     }
@@ -671,6 +722,16 @@ class SiteConfigService
         }
 
         return $data;
+    }
+
+    public function allowsNegativeStock(): bool
+    {
+        $value = Setting::query()
+            ->where('group', 'store')
+            ->where('key', 'allow_negative_stock')
+            ->value('value');
+
+        return filter_var($value, FILTER_VALIDATE_BOOLEAN);
     }
 
     private function usdPenRate(): float

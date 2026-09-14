@@ -17,6 +17,7 @@ class SettingSeeder extends Seeder
             ['group' => 'seo', 'key' => 'description', 'value' => 'OPEN9 transforma procesos manuales en soluciones inteligentes: automatización, IA, software a medida, dashboards, integraciones y chatbots.', 'type' => 'text', 'is_public' => true],
             ['group' => 'social', 'key' => 'links', 'value' => json_encode([]), 'type' => 'json', 'is_public' => true],
             ['group' => 'store', 'key' => 'usd_pen_rate', 'value' => '3.75', 'type' => 'number', 'is_public' => true],
+            ['group' => 'store', 'key' => 'allow_negative_stock', 'value' => '0', 'type' => 'boolean', 'is_public' => true],
         ];
 
         foreach ($settings as $setting) {

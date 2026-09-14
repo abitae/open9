@@ -19,6 +19,7 @@ export function AuthProvider({ children }) {
             const { client: current } = await api.get('/auth/me');
             setClient(current);
         } catch {
+            setToken(null);
             setClient(null);
         } finally {
             setIsLoading(false);
@@ -37,12 +38,18 @@ export function AuthProvider({ children }) {
         return authenticated;
     }, []);
 
-    const register = useCallback(async (data) => {
-        const { token, client: created } = await api.post('/auth/register', data, { auth: false });
-        setToken(token);
-        setClient(created);
+    const register = useCallback(async (data) => api.post('/auth/register', data, { auth: false }), []);
 
-        return created;
+    const verifyEmail = useCallback(async (email, code) => {
+        const { token, client: verified } = await api.post('/auth/verify-email', { email, code }, { auth: false });
+        setToken(token);
+        setClient(verified);
+
+        return verified;
+    }, []);
+
+    const resendVerification = useCallback(async (email) => {
+        await api.post('/auth/resend-verification', { email }, { auth: false });
     }, []);
 
     const loginWithToken = useCallback(async (token) => {
@@ -62,7 +69,17 @@ export function AuthProvider({ children }) {
     }, []);
 
     return (
-        <AuthContext.Provider value={{ client, isLoading, isAuthenticated: client !== null, login, register, loginWithToken, logout }}>
+        <AuthContext.Provider value={{
+            client,
+            isLoading,
+            isAuthenticated: client !== null,
+            login,
+            register,
+            verifyEmail,
+            resendVerification,
+            loginWithToken,
+            logout,
+        }}>
             {children}
         </AuthContext.Provider>
     );

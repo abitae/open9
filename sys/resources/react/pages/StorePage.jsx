@@ -11,6 +11,8 @@ import { useCart } from '../lib/cart';
 import { flyRocketToCart } from '../lib/cartFx';
 import { useDebouncedValue } from '../lib/useDebouncedValue';
 import { formatMoney } from '../lib/format';
+import { useSite } from '../lib/site';
+import { isOutOfStock } from '../lib/stock';
 
 const SORT_OPTIONS = [
     { value: '', label: 'Ordenar: relevancia' },
@@ -33,6 +35,7 @@ export default function StorePage() {
     const [brands, setBrands] = useState([]);
     const [categories, setCategories] = useState([]);
     const { addItem } = useCart();
+    const { site } = useSite();
     const topRef = useRef(null);
 
     useEffect(() => {
@@ -165,7 +168,7 @@ export default function StorePage() {
 
                         <Reveal className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
                             {products.map((product) => {
-                                const outOfStock = product.stock !== null && product.stock <= 0;
+                                const outOfStock = isOutOfStock(product, site);
 
                                 return (
                                     <div key={product.slug} className="card-hover flex flex-col rounded-2xl border border-white/10 bg-white/5 p-6">

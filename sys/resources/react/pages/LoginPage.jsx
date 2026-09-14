@@ -26,6 +26,12 @@ export default function LoginPage() {
             await login(form.email, form.password);
             navigate(location.state?.from?.pathname ?? '/cuenta', { replace: true });
         } catch (submitError) {
+            if (submitError instanceof ApiError && submitError.requiresVerification) {
+                navigate('/verificar-email', { replace: true, state: { email: form.email, from: location.state?.from } });
+
+                return;
+            }
+
             setError(submitError instanceof ApiError ? submitError.message : 'No pudimos iniciar sesión.');
         } finally {
             setIsSubmitting(false);

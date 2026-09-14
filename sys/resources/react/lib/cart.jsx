@@ -29,31 +29,43 @@ export function CartProvider({ children }) {
     }, [items]);
 
     const addItem = useCallback((productId, quantity = 1) => {
+        const id = String(productId);
+
+        if (id === '' || id === 'undefined' || id === 'null') {
+            return;
+        }
+
+        const addBy = Math.max(1, Number(quantity) || 1);
+
         setItems((current) => {
-            const existing = current.find((item) => item.productId === productId);
+            const existing = current.find((item) => String(item.productId) === id);
 
             if (existing) {
-                return current.map((item) => (item.productId === productId
-                    ? { ...item, quantity: item.quantity + quantity }
+                return current.map((item) => (String(item.productId) === id
+                    ? { ...item, quantity: item.quantity + addBy }
                     : item));
             }
 
-            return [...current, { productId, quantity }];
+            return [...current, { productId: id, quantity: addBy }];
         });
     }, []);
 
     const updateQuantity = useCallback((productId, quantity) => {
+        const id = String(productId);
+
         setItems((current) => {
             if (quantity <= 0) {
-                return current.filter((item) => item.productId !== productId);
+                return current.filter((item) => String(item.productId) !== id);
             }
 
-            return current.map((item) => (item.productId === productId ? { ...item, quantity } : item));
+            return current.map((item) => (String(item.productId) === id ? { ...item, quantity } : item));
         });
     }, []);
 
     const removeItem = useCallback((productId) => {
-        setItems((current) => current.filter((item) => item.productId !== productId));
+        const id = String(productId);
+
+        setItems((current) => current.filter((item) => String(item.productId) !== id));
     }, []);
 
     const clear = useCallback(() => setItems([]), []);

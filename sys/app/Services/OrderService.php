@@ -17,6 +17,7 @@ class OrderService
 {
     public function __construct(
         private readonly UniqueCodeService $codes,
+        private readonly SiteConfigService $site,
     ) {}
 
     /**
@@ -90,7 +91,7 @@ class OrderService
                     continue;
                 }
 
-                $product->stock = max(0, (int) $product->stock - (int) $item->quantity);
+                $product->applySale((int) $item->quantity, $this->site->allowsNegativeStock());
                 $product->save();
             }
 
@@ -153,7 +154,7 @@ class OrderService
 
             $quantity = max(1, (int) $item['quantity']);
 
-            if ($product->stock !== null && $product->stock < $quantity) {
+            if (! $product->canFulfill($quantity, $this->site->allowsNegativeStock())) {
                 throw ValidationException::withMessages([
                     'items' => "No hay stock suficiente de {$product->name}.",
                 ]);

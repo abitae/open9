@@ -3,6 +3,7 @@
 use App\Models\BlogPost;
 use App\Models\Product;
 use App\Models\Project;
+use App\Models\Setting;
 use App\Services\SiteConfigService;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -42,6 +43,40 @@ it('paginates the public product listing', function (): void {
     expect($response->json('data'))->toHaveCount(12);
     expect($response->json('meta.total'))->toBe(18);
     expect($response->json('meta.last_page'))->toBe(2);
+});
+
+it('resolves a one-dollar product by id even when it is off the first catalog page', function (): void {
+    $cheap = Product::query()->create([
+        'name' => 'Prueba un dólar',
+        'slug' => 'prueba-un-dolar-'.uniqid(),
+        'description' => 'Producto de prueba a un dólar.',
+        'price' => 1,
+        'currency' => 'USD',
+        'stock' => 10,
+        'rating' => 5,
+        'sort_order' => 999,
+        'status' => 'published',
+    ]);
+
+    $pageOneIds = collect($this->getJson('/api/products')->assertOk()->json('data'))->pluck('id');
+
+    expect($pageOneIds)->not->toContain((string) $cheap->id);
+
+    $this->getJson('/api/products?ids='.$cheap->id)
+        ->assertOk()
+        ->assertJsonCount(1, 'data')
+        ->assertJsonPath('data.0.id', (string) $cheap->id);
+
+    expect((float) $this->getJson('/api/products?ids='.$cheap->id)->json('data.0.price'))->toBe(1.0);
+});
+
+it('hides unpublished products from the cart id lookup', function (): void {
+    $product = Product::query()->where('status', 'published')->firstOrFail();
+    $product->update(['status' => 'draft']);
+
+    $this->getJson('/api/products?ids='.$product->id)
+        ->assertOk()
+        ->assertJsonCount(0, 'data');
 });
 
 it('lists active blog categories and filters posts by category slug', function (): void {
@@ -98,6 +133,21 @@ it('filters products to only those in stock', function (): void {
 
     expect(collect($result['data'])->pluck('slug'))->not->toContain($outOfStock->slug);
     expect($result['meta']['total'])->toBe(17);
+});
+
+it('keeps zero-stock products in the available filter when negative stock is allowed', function (): void {
+    $outOfStock = Product::query()->where('status', 'published')->firstOrFail();
+    $outOfStock->update(['stock' => 0]);
+
+    Setting::query()->updateOrCreate(
+        ['group' => 'store', 'key' => 'allow_negative_stock'],
+        ['value' => '1', 'type' => 'boolean', 'is_public' => true],
+    );
+    app(SiteConfigService::class)->clearCache();
+
+    $result = app(SiteConfigService::class)->products(inStockOnly: true, perPage: 100);
+
+    expect(collect($result['data'])->pluck('slug'))->toContain($outOfStock->slug);
 });
 
 it('paginates the public projects listing', function (): void {

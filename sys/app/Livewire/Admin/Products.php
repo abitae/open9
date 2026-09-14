@@ -40,7 +40,7 @@ class Products extends BaseResourceIndex
         'name' => ['label' => 'Nombre', 'rules' => ['required', 'string', 'max:255']],
         'slug' => ['label' => 'Slug', 'rules' => ['required', 'string', 'max:255'], 'unique' => true],
         'description' => ['label' => 'Descripción', 'type' => 'textarea', 'rules' => ['nullable', 'string']],
-        'price' => ['label' => 'Precio', 'type' => 'number', 'default' => 0, 'rules' => ['required', 'numeric', 'min:0']],
+        'price' => ['label' => 'Precio', 'type' => 'number', 'step' => '0.01', 'default' => 0, 'rules' => ['required', 'numeric', 'min:0']],
         'currency' => [
             'label' => 'Moneda base',
             'type' => 'select',
@@ -48,7 +48,7 @@ class Products extends BaseResourceIndex
             'options' => ['USD' => 'Dólares (USD)', 'PEN' => 'Soles (PEN)'],
             'rules' => ['required', 'string', 'in:USD,PEN'],
         ],
-        'stock' => ['label' => 'Stock', 'type' => 'number', 'default' => 0, 'rules' => ['integer', 'min:0']],
+        'stock' => ['label' => 'Stock (vacío = ilimitado)', 'type' => 'number', 'default' => null, 'rules' => ['nullable', 'integer']],
         'badge' => ['label' => 'Badge', 'rules' => ['nullable', 'string', 'max:100']],
         'rating' => ['label' => 'Rating', 'type' => 'number', 'default' => 0, 'rules' => ['numeric', 'min:0', 'max:5']],
         'main_image' => ['label' => 'Imagen', 'type' => 'image', 'directory' => 'products/{slug}', 'rules' => ['nullable', 'string']],

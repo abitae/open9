@@ -52,6 +52,7 @@ class PermissionSeeder extends Seeder
         'product-brands',
         'orders',
         'payment-settings',
+        'store-settings',
         'clients',
         'social-login',
     ];

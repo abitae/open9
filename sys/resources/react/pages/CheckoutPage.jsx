@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Payment, initMercadoPago } from '@mercadopago/sdk-react';
 import { Link, useNavigate } from 'react-router-dom';
 import PageHeader from '../components/PageHeader';
@@ -7,14 +7,15 @@ import { useAuth } from '../lib/auth';
 import { useCart } from '../lib/cart';
 import { useSite } from '../lib/site';
 import { formatMoney } from '../lib/format';
+import { useCartCatalog } from '../lib/useCartCatalog';
 
 export default function CheckoutPage() {
     const { site } = useSite();
-    const { client, isAuthenticated } = useAuth();
+    const { client, isAuthenticated, isLoading: authLoading } = useAuth();
     const { items, clear } = useCart();
+    const { lines, isLoading } = useCartCatalog();
     const navigate = useNavigate();
 
-    const [products, setProducts] = useState(null);
     const [addresses, setAddresses] = useState([]);
     const [selectedAddressId, setSelectedAddressId] = useState('');
     const [buyer, setBuyer] = useState({ name: '', email: '', phone: '', notes: '' });
@@ -25,8 +26,10 @@ export default function CheckoutPage() {
     const [mpReady, setMpReady] = useState(false);
 
     useEffect(() => {
-        api.get('/products', { auth: false }).then(({ data }) => setProducts(data));
-    }, []);
+        if (!authLoading && isAuthenticated && client && !client.email_verified) {
+            navigate('/verificar-email', { replace: true, state: { email: client.email, from: { pathname: '/checkout' } } });
+        }
+    }, [authLoading, isAuthenticated, client, navigate]);
 
     useEffect(() => {
         if (client) {
@@ -36,7 +39,9 @@ export default function CheckoutPage() {
 
     useEffect(() => {
         if (isAuthenticated) {
-            api.get('/account/addresses').then(({ addresses: list }) => setAddresses(list));
+            api.get('/account/addresses')
+                .then(({ addresses: list }) => setAddresses(list))
+                .catch(() => setAddresses([]));
         }
     }, [isAuthenticated]);
 
@@ -47,22 +52,9 @@ export default function CheckoutPage() {
         }
     }, [order, mpReady]);
 
-    const lines = useMemo(() => {
-        if (!products) {
-            return [];
-        }
-
-        return items
-            .map((item) => {
-                const product = products.find((candidate) => candidate.id === item.productId);
-
-                return product ? { ...item, product } : null;
-            })
-            .filter(Boolean);
-    }, [items, products]);
-
-    const total = lines.reduce((sum, line) => sum + line.product.price * line.quantity, 0);
-    const currency = lines[0]?.product.currency ?? 'USD';
+    const availableLines = (lines ?? []).filter((line) => line.product);
+    const total = availableLines.reduce((sum, line) => sum + line.product.price * line.quantity, 0);
+    const currency = availableLines[0]?.product.currency ?? 'USD';
 
     const applySavedAddress = (id) => {
         setSelectedAddressId(id);
@@ -87,10 +79,17 @@ export default function CheckoutPage() {
         setError('');
         setIsSubmitting(true);
 
+        if (isLoading || availableLines.length === 0 || availableLines.length !== items.length) {
+            setError('Algunos productos del carrito ya no están disponibles.');
+            setIsSubmitting(false);
+
+            return;
+        }
+
         try {
             const payload = {
                 buyer,
-                items: items.map((item) => ({ product_id: item.productId, quantity: item.quantity })),
+                items: availableLines.map((item) => ({ product_id: Number(item.productId), quantity: item.quantity })),
                 shipping_address: shipping.line1 ? shipping : undefined,
             };
 
@@ -179,7 +178,7 @@ export default function CheckoutPage() {
 
                         {error && <p className="text-sm text-red-400">{error}</p>}
 
-                        <button type="submit" disabled={isSubmitting} className="btn-primary w-full">
+                        <button type="submit" disabled={isSubmitting || isLoading || availableLines.length === 0} className="btn-primary w-full">
                             {isSubmitting ? 'Procesando…' : 'Continuar al pago'}
                         </button>
                     </form>
@@ -195,8 +194,20 @@ export default function CheckoutPage() {
                                 customization={{ paymentMethods: { creditCard: 'all', debitCard: 'all', mercadoPago: 'all' } }}
                                 onSubmit={async ({ formData }) => {
                                     try {
-                                        await api.post('/checkout/process', { order_code: order.order_code, form_data: formData });
-                                        clear();
+                                        const result = await api.post('/checkout/process', { order_code: order.order_code, form_data: formData });
+                                        const approved = result.status === 'approved' || result.payment_status === 'paid';
+                                        const rejected = result.status === 'rejected' || result.payment_status === 'failed';
+
+                                        if (rejected) {
+                                            setError('El pago fue rechazado. Intenta con otro medio de pago.');
+
+                                            return;
+                                        }
+
+                                        if (approved) {
+                                            clear();
+                                        }
+
                                         navigate(`/checkout/resultado?order=${order.order_code}`);
                                     } catch (processError) {
                                         setError(processError instanceof ApiError ? processError.message : 'No pudimos procesar el pago.');

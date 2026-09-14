@@ -1,5 +1,6 @@
 <?php
 
+use App\Mail\ClientVerificationCodeMail;
 use App\Models\Client;
 use App\Models\PaymentSetting;
 use App\Models\Product;
@@ -11,6 +12,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Mail;
 use Laravel\Socialite\Facades\Socialite;
 use Laravel\Socialite\Two\AbstractProvider;
 use Laravel\Socialite\Two\User;
@@ -54,7 +56,9 @@ function enableGoogleLogin(): SocialLoginSetting
     ]);
 }
 
-it('registers a client and returns a Sanctum token', function (): void {
+it('registers a client and requires email verification before issuing a token', function (): void {
+    Mail::fake();
+
     $response = $this->postJson('/api/auth/register', [
         'name' => 'Grace Hopper',
         'email' => 'grace@example.com',
@@ -63,14 +67,18 @@ it('registers a client and returns a Sanctum token', function (): void {
     ]);
 
     $response->assertCreated()
-        ->assertJsonStructure(['token', 'client' => ['id', 'name', 'email']])
-        ->assertJsonPath('client.email', 'grace@example.com');
+        ->assertJsonPath('requires_verification', true)
+        ->assertJsonPath('email', 'grace@example.com');
+
+    expect($response->json('token'))->toBeNull();
 
     $this->assertDatabaseHas('clients', ['email' => 'grace@example.com']);
 
     $client = Client::query()->where('email', 'grace@example.com')->firstOrFail();
     expect($client->password)->not->toBe('secret-password');
+    expect($client->email_verified_at)->toBeNull();
     expect(Hash::check('secret-password', $client->password))->toBeTrue();
+    Mail::assertQueued(ClientVerificationCodeMail::class);
 });
 
 it('rejects duplicated emails on register', function (): void {
@@ -337,6 +345,7 @@ it('enables google login from env credentials when the admin toggle is off', fun
 });
 
 it('creates and logs in a client through the Google callback', function (): void {
+    Mail::fake();
     enableGoogleLogin();
 
     $googleUser = new User;
@@ -367,6 +376,10 @@ it('creates and logs in a client through the Google callback', function (): void
         'email' => 'google-client@example.com',
         'google_id' => 'google-999',
     ]);
+
+    $client = Client::query()->where('email', 'google-client@example.com')->firstOrFail();
+    expect($client->email_verified_at)->not->toBeNull();
+    Mail::assertNothingOutgoing();
 });
 
 it('redirects google callback to the frontend origin that started login', function (): void {
@@ -408,4 +421,83 @@ it('encrypts the stored google client secret', function (): void {
     expect($settings->getAttributes()['google_client_secret'])->not->toBe('super-secret');
     expect($settings->resolvedGoogleClientSecret())->toBe('super-secret');
     expect($settings->googleEnabled())->toBeTrue();
+});
+
+it('invalidates the password when google claims an unverified email', function (): void {
+    Mail::fake();
+    enableGoogleLogin();
+
+    $client = Client::factory()->unverified()->create([
+        'email' => 'taken@example.com',
+        'password' => 'attacker-password',
+    ]);
+    $client->createToken('spa');
+    $attackerTokenId = $client->tokens()->firstOrFail()->id;
+
+    $googleUser = new User;
+    $googleUser->map([
+        'id' => 'google-owner',
+        'name' => 'Dueño Real',
+        'email' => 'taken@example.com',
+        'avatar' => null,
+    ]);
+
+    $provider = Mockery::mock(AbstractProvider::class);
+    $provider->shouldReceive('stateless')->andReturnSelf();
+    $provider->shouldReceive('user')->andReturn($googleUser);
+    Socialite::shouldReceive('driver')->with('google')->andReturn($provider);
+
+    $state = 'state-for-unverified-takeover';
+    Cache::put('google_oauth_return:'.hash('sha256', $state), 'http://localhost', now()->addMinutes(10));
+
+    $this->withUnencryptedCookie('oauth_state', $state)
+        ->get('/api/auth/google/callback?code=fake-code&state='.$state)
+        ->assertRedirect();
+
+    $client->refresh();
+    expect($client->google_id)->toBe('google-owner');
+    expect($client->email_verified_at)->not->toBeNull();
+    expect($client->password)->toBeNull();
+    expect($client->tokens()->whereKey($attackerTokenId)->exists())->toBeFalse();
+    expect($client->tokens()->count())->toBe(1);
+    expect($client->tokens()->first()->name)->toBe('google');
+    Mail::assertNothingOutgoing();
+
+    $this->postJson('/api/auth/login', [
+        'email' => 'taken@example.com',
+        'password' => 'attacker-password',
+    ])->assertUnprocessable()->assertJsonValidationErrors(['email']);
+});
+
+it('keeps the password when google links an already verified account', function (): void {
+    enableGoogleLogin();
+
+    $client = Client::factory()->create([
+        'email' => 'verified@example.com',
+        'password' => 'owner-password',
+    ]);
+
+    $googleUser = new User;
+    $googleUser->map([
+        'id' => 'google-verified',
+        'name' => 'Verified Client',
+        'email' => 'verified@example.com',
+        'avatar' => null,
+    ]);
+
+    $provider = Mockery::mock(AbstractProvider::class);
+    $provider->shouldReceive('stateless')->andReturnSelf();
+    $provider->shouldReceive('user')->andReturn($googleUser);
+    Socialite::shouldReceive('driver')->with('google')->andReturn($provider);
+
+    $state = 'state-for-verified-link';
+    Cache::put('google_oauth_return:'.hash('sha256', $state), 'http://localhost', now()->addMinutes(10));
+
+    $this->withUnencryptedCookie('oauth_state', $state)
+        ->get('/api/auth/google/callback?code=fake-code&state='.$state)
+        ->assertRedirect();
+
+    $client->refresh();
+    expect($client->google_id)->toBe('google-verified');
+    expect(Hash::check('owner-password', $client->password))->toBeTrue();
 });

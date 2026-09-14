@@ -1,14 +1,19 @@
 <?php
 
+use App\Enums\SettingType;
 use App\Livewire\Admin\Orders;
+use App\Mail\OrderConfirmationMail;
 use App\Models\PaymentSetting;
 use App\Models\Product;
+use App\Models\Setting;
 use App\Models\User;
 use App\Services\OrderService;
+use App\Services\SiteConfigService;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Mail;
 use Livewire\Livewire;
 
 uses(RefreshDatabase::class);
@@ -38,6 +43,20 @@ function enableGateway(array $attributes = []): PaymentSetting
         'sandbox_access_token' => Crypt::encryptString('TEST-access-token'),
         'sandbox_public_key' => 'TEST-public-key',
     ], $attributes));
+}
+
+function setNegativeStockAllowed(bool $allowed): void
+{
+    Setting::query()->updateOrCreate(
+        ['group' => 'store', 'key' => 'allow_negative_stock'],
+        [
+            'value' => $allowed ? '1' : '0',
+            'type' => SettingType::Boolean,
+            'is_public' => true,
+        ],
+    );
+
+    app(SiteConfigService::class)->clearCache();
 }
 
 it('starts a checkout, creates a pending order and returns the payment link', function (): void {
@@ -112,6 +131,32 @@ it('recomputes prices from the database and ignores client-sent totals', functio
     ]);
 });
 
+it('creates a checkout for a one dollar product', function (): void {
+    enableGateway();
+
+    Http::fake([
+        'api.mercadopago.com/checkout/preferences' => Http::response([
+            'id' => 'pref-one-dollar',
+            'init_point' => 'https://mp/prod',
+            'sandbox_init_point' => 'https://mp/sandbox',
+        ], 200),
+    ]);
+
+    $product = makeProduct(['price' => 1, 'stock' => 10]);
+
+    $this->postJson('/api/checkout', [
+        'buyer' => ['name' => 'Ada', 'email' => 'ada@example.com'],
+        'items' => [['product_id' => $product->id, 'quantity' => 1]],
+    ])->assertCreated()->assertJsonPath('total', 1);
+
+    $this->assertDatabaseHas('order_items', [
+        'product_id' => $product->id,
+        'quantity' => 1,
+        'unit_price' => 1,
+        'subtotal' => 1,
+    ]);
+});
+
 it('converts prices to the charge currency (USD product -> PEN)', function (): void {
     enableGateway(['currency' => 'PEN']);
 
@@ -145,6 +190,69 @@ it('returns 503 when the gateway is disabled', function (): void {
     $this->assertDatabaseCount('orders', 0);
 });
 
+it('rejects checkout when stock is insufficient and negative stock is disabled', function (): void {
+    enableGateway();
+    setNegativeStockAllowed(false);
+
+    $product = makeProduct(['stock' => 0]);
+
+    $this->postJson('/api/checkout', [
+        'buyer' => ['name' => 'Ada', 'email' => 'ada@example.com'],
+        'items' => [['product_id' => $product->id, 'quantity' => 1]],
+    ])->assertStatus(422)
+        ->assertJsonValidationErrors('items');
+
+    $this->assertDatabaseCount('orders', 0);
+});
+
+it('allows checkout at zero stock when negative stock is enabled', function (): void {
+    enableGateway();
+    setNegativeStockAllowed(true);
+
+    Http::fake([
+        'api.mercadopago.com/checkout/preferences' => Http::response([
+            'id' => 'pref-neg',
+            'init_point' => 'https://mp/prod',
+            'sandbox_init_point' => 'https://mp/sandbox',
+        ], 200),
+    ]);
+
+    $product = makeProduct(['price' => 10, 'stock' => 0]);
+
+    $this->postJson('/api/checkout', [
+        'buyer' => ['name' => 'Ada', 'email' => 'ada@example.com'],
+        'items' => [['product_id' => $product->id, 'quantity' => 2]],
+    ])->assertCreated()->assertJsonPath('total', 20);
+});
+
+it('lets paid orders drive stock below zero when negative stock is enabled', function (): void {
+    setNegativeStockAllowed(true);
+
+    $product = makeProduct(['price' => 10, 'stock' => 1]);
+    $order = app(OrderService::class)->create(
+        ['name' => 'Ada', 'email' => 'ada@example.com'],
+        [['product_id' => $product->id, 'quantity' => 3]],
+        'USD',
+    );
+
+    app(OrderService::class)->markAsPaid($order);
+
+    expect((int) $product->fresh()->stock)->toBe(-2);
+});
+
+it('does not overwrite unlimited stock after a paid order', function (): void {
+    $product = makeProduct(['price' => 10, 'stock' => null]);
+    $order = app(OrderService::class)->create(
+        ['name' => 'Ada', 'email' => 'ada@example.com'],
+        [['product_id' => $product->id, 'quantity' => 2]],
+        'USD',
+    );
+
+    app(OrderService::class)->markAsPaid($order);
+
+    expect($product->fresh()->stock)->toBeNull();
+});
+
 it('rejects checkout that references unpublished products', function (): void {
     enableGateway();
     $draft = makeProduct(['status' => 'draft']);
@@ -166,6 +274,7 @@ it('validates buyer and item payloads', function (): void {
 });
 
 it('confirms the order and decrements stock only when the webhook reports approved', function (): void {
+    Mail::fake();
     enableGateway();
 
     $product = makeProduct(['price' => 1500, 'stock' => 5]);
@@ -201,9 +310,14 @@ it('confirms the order and decrements stock only when the webhook reports approv
         'provider_payment_id' => '987654',
         'status' => 'approved',
     ]);
+
+    Mail::assertSent(OrderConfirmationMail::class, function (OrderConfirmationMail $mail) use ($order): bool {
+        return $mail->hasTo('katherine@example.com') && $mail->order->is($order);
+    });
 });
 
 it('is idempotent: a repeated approved webhook does not decrement stock twice', function (): void {
+    Mail::fake();
     enableGateway();
 
     $product = makeProduct(['price' => 1500, 'stock' => 5]);
@@ -229,9 +343,12 @@ it('is idempotent: a repeated approved webhook does not decrement stock twice', 
     $this->postJson('/api/webhooks/mercadopago', $payload)->assertOk();
 
     expect((int) $product->fresh()->stock)->toBe(3);
+
+    Mail::assertSent(OrderConfirmationMail::class, 1);
 });
 
 it('processes an in-site Bricks payment and confirms the order when approved', function (): void {
+    Mail::fake();
     enableGateway();
 
     $product = makeProduct(['price' => 1500, 'stock' => 5]);
@@ -281,9 +398,14 @@ it('processes an in-site Bricks payment and confirms the order when approved', f
         'provider_payment_id' => '111222',
         'status' => 'approved',
     ]);
+
+    Mail::assertSent(OrderConfirmationMail::class, function (OrderConfirmationMail $mail): bool {
+        return $mail->hasTo('ada@example.com');
+    });
 });
 
 it('marks the order as failed when the Bricks payment is rejected', function (): void {
+    Mail::fake();
     enableGateway();
 
     $product = makeProduct(['price' => 1500, 'stock' => 5]);
@@ -321,6 +443,8 @@ it('marks the order as failed when the Bricks payment is rejected', function ():
         ->assertJsonPath('payment_status', 'failed');
 
     expect((int) $product->fresh()->stock)->toBe(5);
+
+    Mail::assertNothingSent();
 });
 
 it('validates the Bricks payment payload', function (): void {
@@ -353,6 +477,103 @@ it('encrypts stored gateway credentials and decrypts them on demand', function (
     expect($settings->getAttributes()['sandbox_access_token'])->not->toBe('TEST-access-token');
     expect($settings->resolvedAccessToken())->toBe('TEST-access-token');
     expect($settings->resolvedPublicKey())->toBe('TEST-public-key');
+});
+
+it('does not confirm an order when the webhook signature is invalid', function (): void {
+    Mail::fake();
+    enableGateway([
+        'webhook_secret' => Crypt::encryptString('whsec-test'),
+    ]);
+
+    $product = makeProduct(['price' => 1500, 'stock' => 5]);
+    $order = app(OrderService::class)->create(
+        ['name' => 'Katherine Johnson', 'email' => 'katherine@example.com'],
+        [['product_id' => $product->id, 'quantity' => 2]],
+        'USD',
+    );
+
+    Http::fake([
+        'api.mercadopago.com/v1/payments/*' => Http::response([
+            'id' => 987654,
+            'status' => 'approved',
+            'external_reference' => $order->order_code,
+            'transaction_amount' => 3000,
+            'currency_id' => 'USD',
+        ], 200),
+    ]);
+
+    $this->postJson('/api/webhooks/mercadopago', [
+        'type' => 'payment',
+        'data' => ['id' => '987654'],
+    ], [
+        'x-signature' => 'ts=1,v1=invalid-signature',
+        'x-request-id' => 'req-1',
+    ])->assertOk();
+
+    expect($order->fresh()->payment_status)->toBe('unpaid');
+    Mail::assertNothingSent();
+});
+
+it('rejects unsigned webhooks in production when no secret is configured', function (): void {
+    Mail::fake();
+    enableGateway();
+    $this->app['env'] = 'production';
+
+    $product = makeProduct(['price' => 10, 'stock' => 5]);
+    $order = app(OrderService::class)->create(
+        ['name' => 'Ada', 'email' => 'ada@example.com'],
+        [['product_id' => $product->id, 'quantity' => 1]],
+        'USD',
+    );
+
+    Http::fake([
+        'api.mercadopago.com/v1/payments/*' => Http::response([
+            'id' => 555,
+            'status' => 'approved',
+            'external_reference' => $order->order_code,
+            'transaction_amount' => 10,
+            'currency_id' => 'USD',
+        ], 200),
+    ]);
+
+    $this->postJson('/api/webhooks/mercadopago', [
+        'type' => 'payment',
+        'data' => ['id' => '555'],
+    ])->assertOk();
+
+    expect($order->fresh()->payment_status)->toBe('unpaid');
+    Mail::assertNothingSent();
+});
+
+it('does not mark an order paid when the MercadoPago amount does not match', function (): void {
+    Mail::fake();
+    enableGateway();
+
+    $product = makeProduct(['price' => 1500, 'stock' => 5]);
+    $order = app(OrderService::class)->create(
+        ['name' => 'Ada', 'email' => 'ada@example.com'],
+        [['product_id' => $product->id, 'quantity' => 2]],
+        'USD',
+    );
+
+    Http::fake([
+        'api.mercadopago.com/v1/payments/*' => Http::response([
+            'id' => 777,
+            'status' => 'approved',
+            'external_reference' => $order->order_code,
+            'transaction_amount' => 1,
+            'currency_id' => 'USD',
+        ], 200),
+    ]);
+
+    $this->postJson('/api/webhooks/mercadopago', [
+        'type' => 'payment',
+        'data' => ['id' => '777'],
+    ])->assertOk();
+
+    expect($order->fresh()->payment_status)->toBe('unpaid');
+    expect((int) $product->fresh()->stock)->toBe(5);
+    Mail::assertNothingSent();
 });
 
 it('shows the ordered products inside the admin detail modal', function (): void {

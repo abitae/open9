@@ -308,11 +308,29 @@ class MercadoPagoService
             ],
         );
 
-        match ($status) {
-            'approved' => $this->orders->markAsPaid($order, $paymentId),
-            'rejected', 'cancelled' => $this->orders->markAsFailed($order),
-            default => $order->update(['payment_status' => 'pending']),
-        };
+        if ($status === 'approved') {
+            if (round(abs($amount - (float) $order->total), 2) > 0.01) {
+                Log::warning('MercadoPago: el monto del pago no coincide con la orden.', [
+                    'order' => $order->order_code,
+                    'expected' => (float) $order->total,
+                    'amount' => $amount,
+                ]);
+
+                return;
+            }
+
+            $this->orders->markAsPaid($order, $paymentId);
+
+            return;
+        }
+
+        if (in_array($status, ['rejected', 'cancelled'], true)) {
+            $this->orders->markAsFailed($order);
+
+            return;
+        }
+
+        $order->update(['payment_status' => 'pending']);
     }
 
     private function resultUrl(Order $order, string $status): string
@@ -358,7 +376,13 @@ class MercadoPagoService
     {
         $secret = $settings->resolvedWebhookSecret();
 
-        if ($secret === null) {
+        if ($secret === null || $secret === '') {
+            if (app()->isProduction()) {
+                Log::warning('MercadoPago: webhook rechazado porque no hay secret configurado.');
+
+                return false;
+            }
+
             return true;
         }
 

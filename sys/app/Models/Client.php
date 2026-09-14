@@ -75,6 +75,11 @@ class Client extends Authenticatable
         return $this->hasMany(Order::class);
     }
 
+    public function hasVerifiedEmail(): bool
+    {
+        return $this->email_verified_at !== null;
+    }
+
     public function defaultAddress(): ?ClientAddress
     {
         return $this->addresses()->where('is_default', true)->first()

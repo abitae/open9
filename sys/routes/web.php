@@ -45,6 +45,7 @@ use App\Livewire\Admin\SiteBrandingAdmin;
 use App\Livewire\Admin\SocialLinks;
 use App\Livewire\Admin\SocialLoginSettings;
 use App\Livewire\Admin\StorageSettings;
+use App\Livewire\Admin\StoreSettings;
 use App\Livewire\Admin\Testimonials;
 use App\Livewire\Admin\Users;
 use App\Models\Contact;
@@ -147,6 +148,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('product-brands', ProductBrands::class)->middleware('permission:product-brands.view')->name('product-brands.index');
         Route::get('orders', Orders::class)->middleware('permission:orders.view')->name('orders.index');
         Route::get('payment-settings', PaymentSettings::class)->middleware('permission:payment-settings.view')->name('payment-settings.index');
+        Route::get('store-settings', StoreSettings::class)->middleware('permission:store-settings.view')->name('store-settings.index');
         Route::get('clients', Clients::class)->middleware('permission:clients.view')->name('clients.index');
         Route::get('social-login', SocialLoginSettings::class)->middleware('permission:social-login.view')->name('social-login.index');
     });

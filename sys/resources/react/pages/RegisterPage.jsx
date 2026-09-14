@@ -20,7 +20,7 @@ export default function RegisterPage() {
 
         try {
             await register(form);
-            navigate('/cuenta', { replace: true });
+            navigate('/verificar-email', { replace: true, state: { email: form.email } });
         } catch (submitError) {
             if (submitError instanceof ApiError) {
                 setError(submitError.message);
