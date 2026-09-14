@@ -37,6 +37,23 @@ function seedValidOauthState(string $state, string $returnTo = 'http://localhost
     Cache::put('google_oauth_return:'.hash('sha256', $state), $returnTo, now()->addMinutes(10));
 }
 
+it('sends google the callback uri of the current request host', function (): void {
+    enableGoogleLoginForOauthSecurityTest();
+    config(['services.google.redirect' => 'https://stale.example/api/auth/google/callback']);
+
+    $provider = Mockery::mock(AbstractProvider::class);
+    $provider->shouldReceive('stateless')->andReturnSelf();
+    $provider->shouldReceive('with')->andReturnSelf();
+    $provider->shouldReceive('redirect')->andReturnUsing(function () {
+        expect(config('services.google.redirect'))->toBe('https://tienda.test/api/auth/google/callback');
+
+        return redirect('https://accounts.google.com/o/oauth2/auth');
+    });
+    Socialite::shouldReceive('driver')->with('google')->andReturn($provider);
+
+    $this->get('https://tienda.test/api/auth/google/redirect')->assertRedirect();
+});
+
 it('stores APP_URL as oauth return_to when FRONTEND_URL is a local origin', function (): void {
     enableGoogleLoginForOauthSecurityTest();
     config([

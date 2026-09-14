@@ -16,19 +16,19 @@
             <flux:input wire:model="google_client_secret" label="Google Client Secret (vacío = no cambiar)" type="password" placeholder="GOCSPX-..." />
         </div>
 
-        <flux:input wire:model="form.google_redirect_url" label="URL de redirección autorizada" placeholder="{{ url('/api/auth/google/callback') }}" />
+        <flux:input wire:model="form.google_redirect_url" label="URL de redirección autorizada" placeholder="{{ $liveRedirectUri }}" />
+        <flux:callout variant="warning" icon="exclamation-triangle">
+            Google exige esta URI exacta (https, sin barra final, sin <code>/sys</code>).
+            Cópiala en Cloud Console → Credenciales → URIs de redirección autorizados:
+            <code class="block mt-1 break-all">{{ $liveRedirectUri }}</code>
+        </flux:callout>
         <flux:text class="text-xs text-zinc-500">
-            Registra esta URL en Google Cloud Console → Credenciales → URIs de redirección autorizados:
-            <code>{{ url('/api/auth/google/callback') }}</code>
-        </flux:text>
-        <flux:text class="text-xs text-zinc-500">
-            Tras el login, el backend redirige al origen que inició el flujo (<code>return_to</code>),
-            que debe coincidir con <code>APP_URL</code> o <code>FRONTEND_URL</code>
-            (actualmente <code>{{ rtrim((string) config('app.url'), '/') ?: '—' }}</code>
-            / <code>{{ rtrim((string) config('app.frontend_url'), '/') ?: '—' }}</code>).
-            En Google Cloud Console registra exactamente:
-            <code>{{ url('/api/auth/google/callback') }}</code>
-            (no uses <code>/sys</code> en esa URI).
+            Si pruebas en varios orígenes, registra cada uno: este dominio,
+            <code>http://localhost:8000/api/auth/google/callback</code>
+            y, si usas Vite, <code>http://localhost:3002/api/auth/google/callback</code>.
+            Tras el login, el backend vuelve al origen que inició el flujo
+            (<code>APP_URL</code>: <code>{{ rtrim((string) config('app.url'), '/') ?: '—' }}</code>
+            / <code>FRONTEND_URL</code>: <code>{{ rtrim((string) config('app.frontend_url'), '/') ?: '—' }}</code>).
         </flux:text>
 
         <flux:button type="submit" variant="primary">Guardar</flux:button>

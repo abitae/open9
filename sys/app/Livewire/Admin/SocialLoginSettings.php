@@ -26,7 +26,7 @@ class SocialLoginSettings extends Component
         ]);
 
         if (empty($this->form['google_redirect_url'])) {
-            $this->form['google_redirect_url'] = url('/api/auth/google/callback');
+            $this->form['google_redirect_url'] = $this->liveRedirectUri();
         }
     }
 
@@ -55,8 +55,15 @@ class SocialLoginSettings extends Component
         session()->flash('status', 'Configuración de acceso con Google guardada.');
     }
 
+    public function liveRedirectUri(): string
+    {
+        return rtrim(request()->getSchemeAndHttpHost(), '/').'/api/auth/google/callback';
+    }
+
     public function render(): View
     {
-        return view('livewire.admin.social-login-settings');
+        return view('livewire.admin.social-login-settings', [
+            'liveRedirectUri' => $this->liveRedirectUri(),
+        ]);
     }
 }

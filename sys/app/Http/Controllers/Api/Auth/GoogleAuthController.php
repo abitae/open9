@@ -36,7 +36,7 @@ class GoogleAuthController extends Controller
             return redirect($this->frontendUrl('/ingresar?error=google_disabled', $returnTo));
         }
 
-        $this->configureDriver($settings);
+        $this->configureDriver($settings, $request);
 
         $state = Str::random(40);
         Cache::put($this->oauthCacheKey($state), $returnTo, now()->addMinutes(10));
@@ -80,7 +80,7 @@ class GoogleAuthController extends Controller
             return $this->forgetStateCookie(redirect($this->frontendUrl('/ingresar?error=google_disabled', $returnTo)));
         }
 
-        $this->configureDriver($settings);
+        $this->configureDriver($settings, $request);
 
         $providerError = $request->query('error');
 
@@ -149,12 +149,12 @@ class GoogleAuthController extends Controller
         return $driver->stateless();
     }
 
-    private function configureDriver(SocialLoginSetting $settings): void
+    private function configureDriver(SocialLoginSetting $settings, Request $request): void
     {
         config([
             'services.google.client_id' => $settings->resolvedGoogleClientId(),
             'services.google.client_secret' => $settings->resolvedGoogleClientSecret(),
-            'services.google.redirect' => $this->oauthRedirectUri($settings),
+            'services.google.redirect' => $this->oauthRedirectUri($request),
         ]);
     }
 
@@ -241,20 +241,15 @@ class GoogleAuthController extends Controller
         return array_values(array_unique(array_filter($bases, fn (string $base): bool => $base !== '')));
     }
 
-    private function oauthRedirectUri(SocialLoginSetting $settings): string
+    /**
+     * Google compara esta URI carácter a carácter con las registradas en
+     * Cloud Console. Debe ser el host real de esta petición (https, www,
+     * puerto), no APP_URL ni un valor guardado en admin: esos suelen
+     * quedar en localhost u otro dominio y provocan redirect_uri_mismatch.
+     */
+    private function oauthRedirectUri(Request $request): string
     {
-        $live = url('/api/auth/google/callback');
-        $configured = $settings->google_redirect_url;
-
-        if (! is_string($configured) || $configured === '') {
-            return $live;
-        }
-
-        if (app()->isProduction() && $this->isLoopbackHost($configured)) {
-            return $live;
-        }
-
-        return $configured;
+        return rtrim($request->getSchemeAndHttpHost(), '/').'/api/auth/google/callback';
     }
 
     private function defaultFrontendBase(): string
