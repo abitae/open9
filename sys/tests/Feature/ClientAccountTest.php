@@ -5,6 +5,7 @@ use App\Models\PaymentSetting;
 use App\Models\Product;
 use App\Models\SocialLoginSetting;
 use App\Services\OrderService;
+use App\Services\SiteConfigService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Crypt;
@@ -317,6 +318,18 @@ it('keeps guest checkout working without a token', function (): void {
 
 it('exposes whether google login is enabled in the site payload', function (): void {
     enableGoogleLogin();
+
+    $this->getJson('/api/site')
+        ->assertOk()
+        ->assertJsonPath('auth.google_enabled', true);
+});
+
+it('enables google login from env credentials when the admin toggle is off', function (): void {
+    config([
+        'services.google.client_id' => 'env-client.apps.googleusercontent.com',
+        'services.google.client_secret' => 'env-secret',
+    ]);
+    app(SiteConfigService::class)->clearCache();
 
     $this->getJson('/api/site')
         ->assertOk()

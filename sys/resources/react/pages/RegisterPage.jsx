@@ -3,11 +3,9 @@ import { Link, useNavigate } from 'react-router-dom';
 import GoogleButton from '../components/GoogleButton';
 import { ApiError } from '../lib/api';
 import { useAuth } from '../lib/auth';
-import { useSite } from '../lib/site';
 
 export default function RegisterPage() {
     const { register } = useAuth();
-    const { site } = useSite();
     const navigate = useNavigate();
     const [form, setForm] = useState({ name: '', email: '', password: '', phone: '' });
     const [errors, setErrors] = useState({});
@@ -39,14 +37,12 @@ export default function RegisterPage() {
         <div className="mx-auto max-w-md px-4 py-24 sm:px-6">
             <h1 className="text-center text-2xl font-bold text-white">Crear cuenta</h1>
 
-            {site?.auth?.google_enabled && (
-                <div className="mt-8 space-y-4">
-                    <GoogleButton label="Registrarme con Google" />
-                    <div className="flex items-center gap-3 text-xs uppercase text-white/50">
-                        <span className="h-px flex-1 bg-white/10" /> o con tu correo <span className="h-px flex-1 bg-white/10" />
-                    </div>
+            <div className="mt-8 space-y-4">
+                <GoogleButton label="Registrarme con Google" />
+                <div className="flex items-center gap-3 text-xs uppercase text-white/50">
+                    <span className="h-px flex-1 bg-white/10" /> o con tu correo <span className="h-px flex-1 bg-white/10" />
                 </div>
-            )}
+            </div>
 
             <form onSubmit={handleSubmit} className="mt-6 space-y-4">
                 <div className="contact-form-field">

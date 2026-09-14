@@ -26,14 +26,43 @@ class SocialLoginSetting extends Model
 
     public function googleEnabled(): bool
     {
-        return (bool) $this->google_enabled
-            && ! empty($this->google_client_id)
-            && $this->resolvedGoogleClientSecret() !== null;
+        if ($this->resolvedGoogleClientId() === null || $this->resolvedGoogleClientSecret() === null) {
+            return false;
+        }
+
+        return (bool) $this->google_enabled || $this->hasEnvGoogleCredentials();
+    }
+
+    public function resolvedGoogleClientId(): ?string
+    {
+        if (is_string($this->google_client_id) && $this->google_client_id !== '') {
+            return $this->google_client_id;
+        }
+
+        $fromEnv = config('services.google.client_id');
+
+        return is_string($fromEnv) && $fromEnv !== '' ? $fromEnv : null;
     }
 
     public function resolvedGoogleClientSecret(): ?string
     {
-        return $this->decryptValue($this->google_client_secret);
+        $fromDatabase = $this->decryptValue($this->google_client_secret);
+
+        if ($fromDatabase !== null) {
+            return $fromDatabase;
+        }
+
+        $fromEnv = config('services.google.client_secret');
+
+        return is_string($fromEnv) && $fromEnv !== '' ? $fromEnv : null;
+    }
+
+    private function hasEnvGoogleCredentials(): bool
+    {
+        $id = config('services.google.client_id');
+        $secret = config('services.google.client_secret');
+
+        return is_string($id) && $id !== '' && is_string($secret) && $secret !== '';
     }
 
     private function decryptValue(?string $value): ?string

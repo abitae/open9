@@ -152,7 +152,7 @@ class GoogleAuthController extends Controller
     private function configureDriver(SocialLoginSetting $settings): void
     {
         config([
-            'services.google.client_id' => $settings->google_client_id,
+            'services.google.client_id' => $settings->resolvedGoogleClientId(),
             'services.google.client_secret' => $settings->resolvedGoogleClientSecret(),
             'services.google.redirect' => $this->oauthRedirectUri($settings),
         ]);

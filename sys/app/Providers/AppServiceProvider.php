@@ -20,6 +20,7 @@ use App\Models\LegalPage;
 use App\Models\Setting;
 use App\Models\SiteBranding;
 use App\Models\SocialLink;
+use App\Models\SocialLoginSetting;
 use App\Services\SiteConfigService;
 use App\Services\StorageConfigService;
 use Carbon\CarbonImmutable;
@@ -103,6 +104,7 @@ class AppServiceProvider extends ServiceProvider
             LegalPage::class,
             AiChatSetting::class,
             Setting::class,
+            SocialLoginSetting::class,
         ];
 
         foreach ($models as $model) {
