@@ -22,17 +22,14 @@
             <code>{{ url('/api/auth/google/callback') }}</code>
         </flux:text>
         <flux:text class="text-xs text-zinc-500">
-            Tras el login, el backend redirige al frontend que inició el flujo (<code>return_to</code>).
-            Si no se envía, usa <code>FRONTEND_URL</code> del servidor (actualmente
-            <code>{{ rtrim((string) config('app.frontend_url'), '/') ?: '—' }}</code>).
+            Tras el login, el backend redirige al origen que inició el flujo (<code>return_to</code>),
+            que debe coincidir con <code>APP_URL</code> o <code>FRONTEND_URL</code>
+            (actualmente <code>{{ rtrim((string) config('app.url'), '/') ?: '—' }}</code>
+            / <code>{{ rtrim((string) config('app.frontend_url'), '/') ?: '—' }}</code>).
+            En Google Cloud Console registra exactamente:
+            <code>{{ url('/api/auth/google/callback') }}</code>
+            (no uses <code>/sys</code> en esa URI).
         </flux:text>
-        <flux:callout variant="warning" class="text-xs">
-            Si el dominio público (p. ej. <code>open9.dev</code>) sirve el build estático de Vite,
-            debe devolver <code>index.html</code> en rutas como <code>/auth/callback</code> e
-            <code>/ingresar</code>. Sin ese fallback SPA, Google OAuth termina en error 404.
-            Usa <code>try_files</code> (Caddy/Nginx), <code>_redirects</code> o <code>404.html</code>
-            del build — ver <code>frontend2_open9/public/Caddyfile.example</code>.
-        </flux:callout>
 
         <flux:button type="submit" variant="primary">Guardar</flux:button>
     </form>

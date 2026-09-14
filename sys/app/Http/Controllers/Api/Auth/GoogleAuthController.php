@@ -82,6 +82,14 @@ class GoogleAuthController extends Controller
 
         $this->configureDriver($settings);
 
+        $providerError = $request->query('error');
+
+        if (is_string($providerError) && $providerError !== '') {
+            $errorCode = $providerError === 'access_denied' ? 'google_denied' : 'google_failed';
+
+            return $this->forgetStateCookie(redirect($this->frontendUrl('/ingresar?error='.$errorCode, $returnTo)));
+        }
+
         try {
             $googleUser = $this->googleDriver()->user();
         } catch (\Throwable $exception) {
@@ -146,7 +154,7 @@ class GoogleAuthController extends Controller
         config([
             'services.google.client_id' => $settings->google_client_id,
             'services.google.client_secret' => $settings->resolvedGoogleClientSecret(),
-            'services.google.redirect' => $settings->google_redirect_url ?: url('/api/auth/google/callback'),
+            'services.google.redirect' => $this->oauthRedirectUri($settings),
         ]);
     }
 
@@ -206,23 +214,70 @@ class GoogleAuthController extends Controller
         }
 
         if (app()->environment('local')) {
-            if (in_array($parts['host'], ['localhost', '127.0.0.1', '[::1]'], true)) {
+            if ($this->isLoopbackHost($returnTo)) {
                 return $returnTo;
             }
         }
 
-        $allowed = rtrim((string) config('app.frontend_url'), '/');
-
-        if ($allowed !== '' && ($returnTo === $allowed || str_starts_with($returnTo, $allowed.'/'))) {
-            return $returnTo;
+        foreach ($this->allowedFrontendBases() as $allowed) {
+            if ($returnTo === $allowed || str_starts_with($returnTo, $allowed.'/')) {
+                return $returnTo;
+            }
         }
 
         return $default;
     }
 
+    /**
+     * @return list<string>
+     */
+    private function allowedFrontendBases(): array
+    {
+        $bases = [
+            rtrim((string) config('app.frontend_url'), '/'),
+            rtrim((string) config('app.url'), '/'),
+        ];
+
+        return array_values(array_unique(array_filter($bases, fn (string $base): bool => $base !== '')));
+    }
+
+    private function oauthRedirectUri(SocialLoginSetting $settings): string
+    {
+        $live = url('/api/auth/google/callback');
+        $configured = $settings->google_redirect_url;
+
+        if (! is_string($configured) || $configured === '') {
+            return $live;
+        }
+
+        if (app()->isProduction() && $this->isLoopbackHost($configured)) {
+            return $live;
+        }
+
+        return $configured;
+    }
+
     private function defaultFrontendBase(): string
     {
-        return rtrim((string) (config('app.frontend_url') ?: config('app.url')), '/');
+        $frontend = rtrim((string) config('app.frontend_url'), '/');
+        $appUrl = rtrim((string) config('app.url'), '/');
+
+        if (app()->environment('local')) {
+            return $frontend !== '' ? $frontend : $appUrl;
+        }
+
+        if ($frontend !== '' && ! $this->isLoopbackHost($frontend)) {
+            return $frontend;
+        }
+
+        return $appUrl !== '' ? $appUrl : $frontend;
+    }
+
+    private function isLoopbackHost(string $url): bool
+    {
+        $host = parse_url($url, PHP_URL_HOST);
+
+        return in_array($host, ['localhost', '127.0.0.1', '[::1]'], true);
     }
 
     private function frontendUrl(string $path, ?string $base = null): string

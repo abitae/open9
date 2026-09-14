@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import GoogleButton from '../components/GoogleButton';
 import { ApiError } from '../lib/api';
 import { useAuth } from '../lib/auth';
+import { GOOGLE_AUTH_ERROR_MESSAGES } from '../lib/googleAuthErrors';
 import { useSite } from '../lib/site';
 
 export default function LoginPage() {
@@ -10,8 +11,12 @@ export default function LoginPage() {
     const { site } = useSite();
     const navigate = useNavigate();
     const location = useLocation();
+    const [searchParams] = useSearchParams();
+    const oauthError = searchParams.get('error');
     const [form, setForm] = useState({ email: '', password: '' });
-    const [error, setError] = useState('');
+    const [error, setError] = useState(
+        oauthError ? (GOOGLE_AUTH_ERROR_MESSAGES[oauthError] ?? 'No pudimos completar el acceso con Google.') : '',
+    );
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const handleSubmit = async (event) => {

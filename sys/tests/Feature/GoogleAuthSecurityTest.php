@@ -37,6 +37,45 @@ function seedValidOauthState(string $state, string $returnTo = 'http://localhost
     Cache::put('google_oauth_return:'.hash('sha256', $state), $returnTo, now()->addMinutes(10));
 }
 
+it('stores APP_URL as oauth return_to when FRONTEND_URL is a local origin', function (): void {
+    enableGoogleLoginForOauthSecurityTest();
+    config([
+        'app.url' => 'https://open9.test',
+        'app.frontend_url' => 'http://localhost:3002',
+    ]);
+
+    $capturedState = null;
+    $provider = Mockery::mock(AbstractProvider::class);
+    $provider->shouldReceive('stateless')->andReturnSelf();
+    $provider->shouldReceive('with')->andReturnUsing(function (array $params) use (&$capturedState, $provider) {
+        $capturedState = $params['state'] ?? null;
+
+        return $provider;
+    });
+    $provider->shouldReceive('redirect')->andReturn(redirect('https://accounts.google.com/o/oauth2/auth'));
+    Socialite::shouldReceive('driver')->with('google')->andReturn($provider);
+
+    $response = $this->get('/api/auth/google/redirect?return_to='.urlencode('https://open9.test'));
+
+    $response->assertRedirect();
+    expect($capturedState)->toBeString()->not->toBeEmpty();
+    expect(Cache::get('google_oauth_return:'.hash('sha256', (string) $capturedState)))->toBe('https://open9.test');
+});
+
+it('sends the user back to login when google denies the grant', function (): void {
+    enableGoogleLoginForOauthSecurityTest();
+
+    $state = 'state-for-denied-grant';
+    seedValidOauthState($state, 'http://localhost:3002');
+
+    $response = $this->withUnencryptedCookie('oauth_state', $state)
+        ->get('/api/auth/google/callback?error=access_denied&state='.$state);
+
+    $response->assertRedirect();
+    expect($response->headers->get('Location'))->toContain('error=google_denied');
+    $this->assertDatabaseCount('clients', 0);
+});
+
 it('rejects the google callback when no state is provided at all', function (): void {
     enableGoogleLoginForOauthSecurityTest();
     mockGoogleProviderForOauthSecurityTest();
