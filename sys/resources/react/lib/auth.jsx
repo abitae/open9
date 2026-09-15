@@ -52,6 +52,14 @@ export function AuthProvider({ children }) {
         await api.post('/auth/resend-verification', { email }, { auth: false });
     }, []);
 
+    const forgotPassword = useCallback(async (email) => (
+        api.post('/auth/forgot-password', { email }, { auth: false })
+    ), []);
+
+    const resetPassword = useCallback(async (data) => (
+        api.post('/auth/reset-password', data, { auth: false })
+    ), []);
+
     const loginWithToken = useCallback(async (token) => {
         setToken(token);
         await loadClient();
@@ -77,6 +85,8 @@ export function AuthProvider({ children }) {
             register,
             verifyEmail,
             resendVerification,
+            forgotPassword,
+            resetPassword,
             loginWithToken,
             logout,
         }}>

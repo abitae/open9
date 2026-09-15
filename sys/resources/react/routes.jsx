@@ -12,6 +12,8 @@ import HomePage from './pages/HomePage';
 import LegalPage from './pages/LegalPage';
 import LoginPage from './pages/LoginPage';
 import NotFoundPage from './pages/NotFoundPage';
+import ForgotPasswordPage from './pages/ForgotPasswordPage';
+import ResetPasswordPage from './pages/ResetPasswordPage';
 import ProductDetailPage from './pages/ProductDetailPage';
 import ProjectDetailPage from './pages/ProjectDetailPage';
 import ProjectsPage from './pages/ProjectsPage';
@@ -39,6 +41,8 @@ export const routes = [
             { path: '/ingresar', element: <LoginPage /> },
             { path: '/registro', element: <RegisterPage /> },
             { path: '/verificar-email', element: <VerifyEmailPage /> },
+            { path: '/recuperar-contraseña', element: <ForgotPasswordPage /> },
+            { path: '/restablecer-contraseña', element: <ResetPasswordPage /> },
             { path: '/auth/callback', element: <AuthCallbackPage /> },
             { path: '/cuenta', element: <ProtectedRoute><AccountPage /></ProtectedRoute> },
             { path: '/legal/:slug', element: <LegalPage /> },

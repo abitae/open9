@@ -1,7 +1,7 @@
 <section class="space-y-4">
     <div>
         <flux:heading size="xl">Pasarela de pagos</flux:heading>
-        <flux:text class="text-xs">Configura MercadoPago Checkout Bricks (cobro en el sitio, sin redirección) para la tienda. Las credenciales se guardan cifradas.</flux:text>
+        <flux:text class="text-xs">Configura MercadoPago Checkout Bricks (cobro en el sitio, sin redirección) para la tienda. Las credenciales se guardan cifradas. Yape exige moneda PEN, una cuenta Mercado Pago de Perú (site_id MPE) y, para cobros reales, modo producción.</flux:text>
     </div>
 
     @if (session('status'))

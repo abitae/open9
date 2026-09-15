@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use InvalidArgumentException;
 
 class MercadoPagoService
 {
@@ -142,15 +143,29 @@ class MercadoPagoService
             ? $payer['email']
             : $order->buyer_email;
 
+        $paymentMethodId = is_string($formData['payment_method_id'] ?? null)
+            ? strtolower($formData['payment_method_id'])
+            : null;
+        $paymentToken = is_string($formData['token'] ?? null) ? $formData['token'] : null;
+        $isYape = $paymentMethodId === 'yape';
+
+        if ($isYape && strtoupper((string) $order->currency) !== 'PEN') {
+            throw new InvalidArgumentException('Yape solo está disponible para cobros en soles (PEN).');
+        }
+
+        if ($isYape && ($paymentToken === null || $paymentToken === '')) {
+            throw new InvalidArgumentException('El token de Yape es obligatorio.');
+        }
+
         $payload = array_filter([
             'transaction_amount' => (float) $order->total,
             'description' => 'Pedido '.$order->order_code,
             'external_reference' => $order->order_code,
             'statement_descriptor' => $settings->statement_descriptor ?: config('app.name'),
-            'token' => is_string($formData['token'] ?? null) ? $formData['token'] : null,
-            'payment_method_id' => is_string($formData['payment_method_id'] ?? null) ? $formData['payment_method_id'] : null,
-            'issuer_id' => $formData['issuer_id'] ?? null,
-            'installments' => (int) ($formData['installments'] ?? 1),
+            'token' => $paymentToken,
+            'payment_method_id' => $paymentMethodId,
+            'issuer_id' => $isYape ? null : ($formData['issuer_id'] ?? null),
+            'installments' => $isYape ? 1 : (int) ($formData['installments'] ?? 1),
             'payer' => array_filter([
                 'email' => $payerEmail,
                 'identification' => is_array($payer['identification'] ?? null) ? $payer['identification'] : null,

@@ -15,6 +15,7 @@ export default function LoginPage() {
     const [error, setError] = useState(
         oauthError ? (GOOGLE_AUTH_ERROR_MESSAGES[oauthError] ?? 'No pudimos completar el acceso con Google.') : '',
     );
+    const [status, setStatus] = useState(location.state?.passwordReset ? 'Tu contraseña se actualizó. Ya puedes ingresar.' : '');
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const handleSubmit = async (event) => {
@@ -55,10 +56,14 @@ export default function LoginPage() {
                     <input required type="email" className="contact-input" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
                 </div>
                 <div className="contact-form-field">
-                    <label className="text-sm text-white/70">Contraseña</label>
+                    <div className="flex items-center justify-between gap-3">
+                        <label className="text-sm text-white/70">Contraseña</label>
+                        <Link to="/recuperar-contraseña" className="text-xs text-brand">¿Olvidaste tu contraseña?</Link>
+                    </div>
                     <input required type="password" className="contact-input" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
                 </div>
 
+                {status && <p className="text-sm text-white/70">{status}</p>}
                 {error && <p className="text-sm text-red-400">{error}</p>}
 
                 <button type="submit" disabled={isSubmitting} className="btn-primary w-full">

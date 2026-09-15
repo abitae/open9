@@ -11,6 +11,7 @@ use App\Services\OrderService;
 use App\Services\SiteConfigService;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
@@ -453,6 +454,147 @@ it('validates the Bricks payment payload', function (): void {
     $this->postJson('/api/checkout/process', ['order_code' => 'NOPE'])
         ->assertStatus(422)
         ->assertJsonValidationErrors(['order_code', 'form_data']);
+});
+
+it('processes a Yape payment and confirms the order when approved', function (): void {
+    Mail::fake();
+    enableGateway(['currency' => 'PEN']);
+
+    $product = makeProduct(['price' => 1500, 'stock' => 5]);
+
+    Http::fake(function (Request $request) {
+        if (str_contains($request->url(), 'checkout/preferences')) {
+            return Http::response([
+                'id' => 'pref-yape',
+                'init_point' => 'https://mp/prod',
+                'sandbox_init_point' => 'https://mp/sandbox',
+            ], 200);
+        }
+
+        if (str_contains($request->url(), '/v1/payments')) {
+            return Http::response([
+                'id' => 555666,
+                'status' => 'approved',
+                'status_detail' => 'accredited',
+                'transaction_amount' => $request->data()['transaction_amount'] ?? 0,
+                'currency_id' => 'PEN',
+            ], 201);
+        }
+
+        return Http::response([], 404);
+    });
+
+    $created = $this->postJson('/api/checkout', [
+        'buyer' => ['name' => 'Ada', 'email' => 'ada@example.com'],
+        'items' => [['product_id' => $product->id, 'quantity' => 2]],
+    ])->assertCreated();
+
+    $orderCode = $created->json('order_code');
+    $total = (float) $created->json('total');
+
+    expect($created->json('currency'))->toBe('PEN');
+
+    $this->postJson('/api/checkout/process', [
+        'order_code' => $orderCode,
+        'form_data' => [
+            'token' => 'yape_token_123',
+            'payment_method_id' => 'yape',
+            'installments' => 6,
+            'issuer_id' => '999',
+            'transaction_amount' => 1,
+            'payer' => ['email' => 'ada@example.com'],
+        ],
+    ])->assertOk()
+        ->assertJsonPath('status', 'approved')
+        ->assertJsonPath('payment_status', 'paid');
+
+    Http::assertSent(function (Request $request) use ($total): bool {
+        $payload = $request->data();
+
+        return $request->url() === 'https://api.mercadopago.com/v1/payments'
+            && ($payload['payment_method_id'] ?? null) === 'yape'
+            && (int) ($payload['installments'] ?? 0) === 1
+            && ($payload['token'] ?? null) === 'yape_token_123'
+            && (float) ($payload['transaction_amount'] ?? 0) === $total
+            && ! array_key_exists('issuer_id', $payload);
+    });
+
+    $this->assertDatabaseHas('orders', [
+        'order_code' => $orderCode,
+        'payment_status' => 'paid',
+        'status' => 'confirmed',
+    ]);
+
+    expect((int) $product->fresh()->stock)->toBe(3);
+
+    Mail::assertSent(OrderConfirmationMail::class, function (OrderConfirmationMail $mail): bool {
+        return $mail->hasTo('ada@example.com');
+    });
+});
+
+it('rejects Yape when the order is not in PEN', function (): void {
+    enableGateway(['currency' => 'USD']);
+
+    $product = makeProduct(['price' => 1500, 'stock' => 5]);
+
+    Http::fake([
+        'api.mercadopago.com/checkout/preferences' => Http::response([
+            'id' => 'pref-usd',
+            'init_point' => 'https://mp/prod',
+            'sandbox_init_point' => 'https://mp/sandbox',
+        ], 200),
+        'api.mercadopago.com/v1/payments' => Http::response(['id' => 1], 201),
+    ]);
+
+    $orderCode = $this->postJson('/api/checkout', [
+        'buyer' => ['name' => 'Ada', 'email' => 'ada@example.com'],
+        'items' => [['product_id' => $product->id, 'quantity' => 1]],
+    ])->assertCreated()->json('order_code');
+
+    $this->postJson('/api/checkout/process', [
+        'order_code' => $orderCode,
+        'form_data' => [
+            'token' => 'yape_token_123',
+            'payment_method_id' => 'yape',
+            'installments' => 1,
+        ],
+    ])->assertStatus(422)
+        ->assertJsonPath('message', 'Yape solo está disponible para cobros en soles (PEN).');
+
+    Http::assertNotSent(fn (Request $request): bool => str_contains($request->url(), '/v1/payments'));
+
+    expect((int) $product->fresh()->stock)->toBe(5);
+});
+
+it('rejects Yape without a token', function (): void {
+    enableGateway(['currency' => 'PEN']);
+
+    $product = makeProduct(['price' => 1500, 'stock' => 5]);
+
+    Http::fake([
+        'api.mercadopago.com/checkout/preferences' => Http::response([
+            'id' => 'pref-yape-token',
+            'init_point' => 'https://mp/prod',
+            'sandbox_init_point' => 'https://mp/sandbox',
+        ], 200),
+        'api.mercadopago.com/v1/payments' => Http::response(['id' => 1], 201),
+    ]);
+
+    $orderCode = $this->postJson('/api/checkout', [
+        'buyer' => ['name' => 'Ada', 'email' => 'ada@example.com'],
+        'items' => [['product_id' => $product->id, 'quantity' => 1]],
+    ])->assertCreated()->json('order_code');
+
+    $this->postJson('/api/checkout/process', [
+        'order_code' => $orderCode,
+        'form_data' => [
+            'payment_method_id' => 'yape',
+            'installments' => 1,
+        ],
+    ])->assertStatus(422)
+        ->assertJsonPath('message', 'El token de Yape es obligatorio.');
+
+    Http::assertNotSent(fn (Request $request): bool => str_contains($request->url(), '/v1/payments'));
 });
 
 it('exposes the order status for the result page', function (): void {

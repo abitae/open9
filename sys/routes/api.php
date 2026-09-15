@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\Account\AddressController;
 use App\Http\Controllers\Api\Account\OrderController;
 use App\Http\Controllers\Api\Account\ProfileController;
 use App\Http\Controllers\Api\Auth\ClientAuthController;
+use App\Http\Controllers\Api\Auth\ClientPasswordResetController;
 use App\Http\Controllers\Api\Auth\GoogleAuthController;
 use App\Http\Controllers\Api\ChatController;
 use App\Http\Controllers\Api\CheckoutController;
@@ -43,6 +44,8 @@ Route::prefix('auth')->group(function () {
     Route::post('/login', [ClientAuthController::class, 'login'])->middleware('throttle:10,1');
     Route::post('/verify-email', [ClientAuthController::class, 'verifyEmail'])->middleware('throttle:10,1');
     Route::post('/resend-verification', [ClientAuthController::class, 'resendVerification'])->middleware('throttle:5,1');
+    Route::post('/forgot-password', [ClientPasswordResetController::class, 'forgot'])->middleware('throttle:5,1');
+    Route::post('/reset-password', [ClientPasswordResetController::class, 'reset'])->middleware('throttle:10,1');
 
     Route::get('/google/redirect', [GoogleAuthController::class, 'redirect'])->middleware('throttle:20,1');
     Route::get('/google/callback', [GoogleAuthController::class, 'callback'])->middleware('throttle:20,1');

@@ -9,6 +9,7 @@ use App\Services\MercadoPagoService;
 use App\Services\OrderService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use InvalidArgumentException;
 
 class CheckoutController extends Controller
 {
@@ -115,6 +116,10 @@ class CheckoutController extends Controller
 
         try {
             $result = $this->mercadopago->createPayment($order, $data['form_data']);
+        } catch (InvalidArgumentException $exception) {
+            return response()->json([
+                'message' => $exception->getMessage(),
+            ], 422);
         } catch (\Throwable $exception) {
             report($exception);
 
