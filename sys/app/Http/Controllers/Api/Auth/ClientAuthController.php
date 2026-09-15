@@ -155,6 +155,7 @@ class ClientAuthController extends Controller
             'phone' => $client->phone,
             'avatar' => $client->avatar,
             'email_verified' => $client->hasVerifiedEmail(),
+            'has_password' => $client->password !== null,
         ];
     }
 }

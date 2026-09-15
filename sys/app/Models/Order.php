@@ -46,4 +46,28 @@ class Order extends Model
     {
         return $this->payment_status === 'paid';
     }
+
+    public function canPay(): bool
+    {
+        if ($this->isPaid() || in_array($this->status, ['confirmed', 'completed'], true)) {
+            return false;
+        }
+
+        return in_array($this->payment_status, ['unpaid', 'failed'], true);
+    }
+
+    public function reopenForPayment(): void
+    {
+        if ($this->status === 'cancelled') {
+            $this->status = 'pending';
+        }
+
+        if ($this->payment_status === 'failed') {
+            $this->payment_status = 'unpaid';
+        }
+
+        if ($this->isDirty()) {
+            $this->save();
+        }
+    }
 }

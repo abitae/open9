@@ -62,6 +62,7 @@ Route::prefix('auth')->group(function () {
 Route::middleware(['auth:sanctum', 'client.active', 'client.verified'])->prefix('account')->group(function () {
     Route::get('/profile', [ProfileController::class, 'show']);
     Route::put('/profile', [ProfileController::class, 'update']);
+    Route::put('/password', [ProfileController::class, 'updatePassword']);
 
     Route::get('/addresses', [AddressController::class, 'index']);
     Route::post('/addresses', [AddressController::class, 'store']);
@@ -71,4 +72,5 @@ Route::middleware(['auth:sanctum', 'client.active', 'client.verified'])->prefix(
 
     Route::get('/orders', [OrderController::class, 'index']);
     Route::get('/orders/{orderCode}', [OrderController::class, 'show']);
+    Route::post('/orders/{orderCode}/pay', [OrderController::class, 'pay']);
 });

@@ -159,7 +159,38 @@ it('lists only the orders that belong to the authenticated client', function ():
         ->getJson('/api/account/orders')
         ->assertOk()
         ->assertJsonCount(1, 'data')
-        ->assertJsonPath('data.0.order_code', $mine->order_code);
+        ->assertJsonPath('data.0.order_code', $mine->order_code)
+        ->assertJsonPath('data.0.can_pay', true);
+});
+
+it('returns the authenticated client order detail with items', function (): void {
+    $product = storeProduct(['name' => 'Servidor detalle']);
+    $client = Client::factory()->create();
+
+    $order = app(OrderService::class)->create(
+        ['name' => $client->name, 'email' => $client->email],
+        [['product_id' => $product->id, 'quantity' => 2]],
+        'USD',
+        $client,
+        [
+            'recipient_name' => $client->name,
+            'line1' => 'Av. Test 123',
+            'city' => 'Lima',
+            'country' => 'PE',
+        ],
+    );
+
+    $token = $client->createToken('spa')->plainTextToken;
+
+    $this->withToken($token)
+        ->getJson('/api/account/orders/'.$order->order_code)
+        ->assertOk()
+        ->assertJsonPath('order.order_code', $order->order_code)
+        ->assertJsonPath('order.can_pay', true)
+        ->assertJsonPath('order.payment_status', 'unpaid')
+        ->assertJsonPath('order.items.0.product_name', 'Servidor detalle')
+        ->assertJsonPath('order.items.0.quantity', 2)
+        ->assertJsonPath('order.shipping_address.city', 'Lima');
 });
 
 it('does not expose another client order detail', function (): void {
@@ -251,7 +282,9 @@ it('cannot manage addresses of other clients', function (): void {
 
 it('requires authentication for account endpoints', function (): void {
     $this->getJson('/api/account/profile')->assertUnauthorized();
+    $this->putJson('/api/account/password')->assertUnauthorized();
     $this->getJson('/api/account/orders')->assertUnauthorized();
+    $this->postJson('/api/account/orders/ORD-TEST/pay')->assertUnauthorized();
     $this->getJson('/api/account/addresses')->assertUnauthorized();
 });
 
@@ -276,6 +309,154 @@ it('updates the client profile', function (): void {
     ])->assertOk()->assertJsonPath('client.name', 'Nombre Nuevo');
 
     $this->assertDatabaseHas('clients', ['id' => $client->id, 'name' => 'Nombre Nuevo', 'phone' => '111222333']);
+});
+
+it('updates the client password from the dedicated endpoint', function (): void {
+    $client = Client::factory()->create(['password' => 'old-password']);
+    $token = $client->createToken('spa')->plainTextToken;
+
+    $this->withToken($token)->putJson('/api/account/password', [
+        'current_password' => 'old-password',
+        'password' => 'new-password',
+        'password_confirmation' => 'new-password',
+    ])->assertOk()->assertJsonPath('client.has_password', true);
+
+    expect(Hash::check('new-password', $client->fresh()->password))->toBeTrue();
+});
+
+it('rejects a password change with the wrong current password', function (): void {
+    $client = Client::factory()->create(['password' => 'old-password']);
+    $token = $client->createToken('spa')->plainTextToken;
+
+    $this->withToken($token)->putJson('/api/account/password', [
+        'current_password' => 'wrong-password',
+        'password' => 'new-password',
+        'password_confirmation' => 'new-password',
+    ])->assertUnprocessable()->assertJsonValidationErrors(['current_password']);
+});
+
+it('lets a google client create a password without the current one', function (): void {
+    $client = Client::factory()->google()->create();
+    $token = $client->createToken('spa')->plainTextToken;
+
+    $this->withToken($token)->putJson('/api/account/password', [
+        'password' => 'new-password',
+        'password_confirmation' => 'new-password',
+    ])->assertOk()->assertJsonPath('client.has_password', true);
+
+    expect(Hash::check('new-password', $client->fresh()->password))->toBeTrue();
+});
+
+it('starts a payment session for an unpaid client order', function (): void {
+    enablePaymentGateway();
+
+    Http::fake([
+        'api.mercadopago.com/checkout/preferences' => Http::response([
+            'id' => 'pref-retry',
+            'init_point' => 'https://mp/prod',
+            'sandbox_init_point' => 'https://mp/sandbox',
+        ], 200),
+    ]);
+
+    $product = storeProduct();
+    $client = Client::factory()->create();
+    $order = app(OrderService::class)->create(
+        ['name' => $client->name, 'email' => $client->email],
+        [['product_id' => $product->id, 'quantity' => 1]],
+        'USD',
+        $client,
+    );
+    $token = $client->createToken('spa')->plainTextToken;
+
+    $this->withToken($token)
+        ->postJson('/api/account/orders/'.$order->order_code.'/pay')
+        ->assertOk()
+        ->assertJsonPath('order_code', $order->order_code)
+        ->assertJsonPath('preference_id', 'pref-retry')
+        ->assertJsonPath('public_key', 'TEST-public-key')
+        ->assertJsonPath('buyer_email', $client->email);
+
+    expect($order->fresh()->mercadopago_preference_id)->toBe('pref-retry');
+});
+
+it('reopens a failed cancelled order when starting payment', function (): void {
+    enablePaymentGateway();
+
+    Http::fake([
+        'api.mercadopago.com/checkout/preferences' => Http::response([
+            'id' => 'pref-failed',
+            'init_point' => 'https://mp/prod',
+            'sandbox_init_point' => 'https://mp/sandbox',
+        ], 200),
+    ]);
+
+    $product = storeProduct();
+    $client = Client::factory()->create();
+    $order = app(OrderService::class)->create(
+        ['name' => $client->name, 'email' => $client->email],
+        [['product_id' => $product->id, 'quantity' => 1]],
+        'USD',
+        $client,
+    );
+    $order->update([
+        'status' => 'cancelled',
+        'payment_status' => 'failed',
+    ]);
+    $token = $client->createToken('spa')->plainTextToken;
+
+    $this->withToken($token)
+        ->postJson('/api/account/orders/'.$order->order_code.'/pay')
+        ->assertOk()
+        ->assertJsonPath('order_code', $order->order_code);
+
+    $order->refresh();
+    expect($order->status)->toBe('pending');
+    expect($order->payment_status)->toBe('unpaid');
+});
+
+it('does not start payment for a paid or pending order', function (string $paymentStatus, string $status): void {
+    enablePaymentGateway();
+
+    $product = storeProduct();
+    $client = Client::factory()->create();
+    $order = app(OrderService::class)->create(
+        ['name' => $client->name, 'email' => $client->email],
+        [['product_id' => $product->id, 'quantity' => 1]],
+        'USD',
+        $client,
+    );
+    $order->update([
+        'payment_status' => $paymentStatus,
+        'status' => $status,
+    ]);
+    $token = $client->createToken('spa')->plainTextToken;
+
+    $this->withToken($token)
+        ->postJson('/api/account/orders/'.$order->order_code.'/pay')
+        ->assertUnprocessable()
+        ->assertJsonPath('message', 'Este pedido ya no se puede pagar.');
+})->with([
+    'paid' => ['paid', 'confirmed'],
+    'pending' => ['pending', 'pending'],
+]);
+
+it('does not start payment for another client order', function (): void {
+    enablePaymentGateway();
+
+    $product = storeProduct();
+    $client = Client::factory()->create();
+    $other = Client::factory()->create();
+    $foreign = app(OrderService::class)->create(
+        ['name' => $other->name, 'email' => $other->email],
+        [['product_id' => $product->id, 'quantity' => 1]],
+        'USD',
+        $other,
+    );
+    $token = $client->createToken('spa')->plainTextToken;
+
+    $this->withToken($token)
+        ->postJson('/api/account/orders/'.$foreign->order_code.'/pay')
+        ->assertNotFound();
 });
 
 it('associates the client id when checking out with a token', function (): void {

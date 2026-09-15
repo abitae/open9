@@ -29,23 +29,33 @@ class ProfileController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', Rule::unique('clients', 'email')->ignore($client->getKey())],
             'phone' => ['nullable', 'string', 'max:255'],
-            'current_password' => ['nullable', 'required_with:password', 'string'],
-            'password' => ['nullable', 'string', 'min:8', 'max:255', 'confirmed'],
         ]);
-
-        if (! empty($data['password'])) {
-            if ($client->password !== null && ! Hash::check($data['current_password'] ?? '', $client->password)) {
-                throw ValidationException::withMessages([
-                    'current_password' => 'La contraseña actual no es correcta.',
-                ]);
-            }
-
-            $client->password = $data['password'];
-        }
 
         $client->name = $data['name'];
         $client->email = $data['email'];
         $client->phone = $data['phone'] ?? null;
+        $client->save();
+
+        return response()->json(['client' => $this->payload($client)]);
+    }
+
+    public function updatePassword(Request $request): JsonResponse
+    {
+        /** @var Client $client */
+        $client = $request->user();
+
+        $data = $request->validate([
+            'current_password' => [$client->password !== null ? 'required' : 'nullable', 'string'],
+            'password' => ['required', 'string', 'min:8', 'max:255', 'confirmed'],
+        ]);
+
+        if ($client->password !== null && ! Hash::check($data['current_password'] ?? '', $client->password)) {
+            throw ValidationException::withMessages([
+                'current_password' => 'La contraseña actual no es correcta.',
+            ]);
+        }
+
+        $client->password = $data['password'];
         $client->save();
 
         return response()->json(['client' => $this->payload($client)]);
