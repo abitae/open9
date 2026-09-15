@@ -1,6 +1,9 @@
 const TOKEN_KEY = 'open9_client_token';
+const UNAUTHENTICATED_EVENT = 'open9:unauthenticated';
 
-export function getToken() {
+let memoryToken;
+
+function readStoredToken() {
     try {
         return localStorage.getItem(TOKEN_KEY);
     } catch {
@@ -8,7 +11,17 @@ export function getToken() {
     }
 }
 
+export function getToken() {
+    if (memoryToken === undefined) {
+        memoryToken = readStoredToken();
+    }
+
+    return memoryToken;
+}
+
 export function setToken(token) {
+    memoryToken = token || null;
+
     try {
         if (token) {
             localStorage.setItem(TOKEN_KEY, token);
@@ -19,6 +32,24 @@ export function setToken(token) {
         // El almacenamiento puede no estar disponible (modo privado); la sesión
         // simplemente no persistirá entre recargas.
     }
+}
+
+function notifyUnauthenticated() {
+    setToken(null);
+
+    if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event(UNAUTHENTICATED_EVENT));
+    }
+}
+
+export function onUnauthenticated(listener) {
+    if (typeof window === 'undefined') {
+        return () => {};
+    }
+
+    window.addEventListener(UNAUTHENTICATED_EVENT, listener);
+
+    return () => window.removeEventListener(UNAUTHENTICATED_EVENT, listener);
 }
 
 export class ApiError extends Error {
@@ -47,9 +78,12 @@ async function request(path, { method = 'GET', body, auth = true, headers = {} }
     if (auth) {
         const token = getToken();
 
-        if (token) {
-            finalHeaders.Authorization = `Bearer ${token}`;
+        if (!token) {
+            notifyUnauthenticated();
+            throw new ApiError('Unauthenticated.', 401);
         }
+
+        finalHeaders.Authorization = `Bearer ${token}`;
     }
 
     const response = await fetch(`/api${path}`, {
@@ -67,8 +101,8 @@ async function request(path, { method = 'GET', body, auth = true, headers = {} }
     }
 
     if (!response.ok) {
-        if (response.status === 401) {
-            setToken(null);
+        if (auth && response.status === 401) {
+            notifyUnauthenticated();
         }
 
         throw new ApiError(

@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
-import { api, getToken, setToken } from './api';
+import { api, getToken, onUnauthenticated, setToken } from './api';
 
 const AuthContext = createContext(null);
 
@@ -29,6 +29,10 @@ export function AuthProvider({ children }) {
     useEffect(() => {
         loadClient();
     }, [loadClient]);
+
+    useEffect(() => onUnauthenticated(() => {
+        setClient(null);
+    }), []);
 
     const login = useCallback(async (email, password) => {
         const { token, client: authenticated } = await api.post('/auth/login', { email, password }, { auth: false });
@@ -63,6 +67,10 @@ export function AuthProvider({ children }) {
     const loginWithToken = useCallback(async (token) => {
         setToken(token);
         await loadClient();
+
+        if (!getToken()) {
+            throw new Error('No pudimos restaurar tu sesión.');
+        }
     }, [loadClient]);
 
     const logout = useCallback(async () => {

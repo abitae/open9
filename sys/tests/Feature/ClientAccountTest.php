@@ -250,9 +250,19 @@ it('cannot manage addresses of other clients', function (): void {
 });
 
 it('requires authentication for account endpoints', function (): void {
-    $this->getJson('/api/account/profile')->assertStatus(401);
-    $this->getJson('/api/account/orders')->assertStatus(401);
-    $this->getJson('/api/account/addresses')->assertStatus(401);
+    $this->getJson('/api/account/profile')->assertUnauthorized();
+    $this->getJson('/api/account/orders')->assertUnauthorized();
+    $this->getJson('/api/account/addresses')->assertUnauthorized();
+});
+
+it('rejects revoked tokens on account endpoints', function (): void {
+    $client = Client::factory()->create();
+    $token = $client->createToken('spa')->plainTextToken;
+    $client->tokens()->delete();
+
+    $this->withToken($token)->getJson('/api/account/profile')->assertUnauthorized();
+    $this->withToken($token)->getJson('/api/account/orders')->assertUnauthorized();
+    $this->withToken($token)->getJson('/api/account/addresses')->assertUnauthorized();
 });
 
 it('updates the client profile', function (): void {

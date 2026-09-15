@@ -22,12 +22,8 @@ class SocialLoginSettings extends Component
         $settings = SocialLoginSetting::current();
 
         $this->form = $settings->only([
-            'google_enabled', 'google_client_id', 'google_redirect_url',
+            'google_enabled', 'google_client_id',
         ]);
-
-        if (empty($this->form['google_redirect_url'])) {
-            $this->form['google_redirect_url'] = $this->liveRedirectUri();
-        }
     }
 
     public function save(): void
@@ -37,7 +33,6 @@ class SocialLoginSettings extends Component
         $this->validate([
             'form.google_enabled' => ['boolean'],
             'form.google_client_id' => ['nullable', 'string', 'max:255'],
-            'form.google_redirect_url' => ['nullable', 'url', 'max:255'],
             'google_client_secret' => ['nullable', 'string', 'max:255'],
         ]);
 
@@ -60,10 +55,45 @@ class SocialLoginSettings extends Component
         return rtrim(request()->getSchemeAndHttpHost(), '/').'/api/auth/google/callback';
     }
 
+    /**
+     * URIs que hay que pegar en Cloud Console. Google compara carácter a carácter
+     * con la que envía Laravel (el host real de cada petición).
+     *
+     * @return list<string>
+     */
+    public function consoleRedirectUris(): array
+    {
+        $uris = [
+            'https://open9.dev/api/auth/google/callback',
+            'https://www.open9.dev/api/auth/google/callback',
+            'https://open9.test/api/auth/google/callback',
+            $this->liveRedirectUri(),
+        ];
+
+        return array_values(array_unique($uris));
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function consoleJavaScriptOrigins(): array
+    {
+        $origins = [
+            'https://open9.dev',
+            'https://www.open9.dev',
+            'https://open9.test',
+            rtrim(request()->getSchemeAndHttpHost(), '/'),
+        ];
+
+        return array_values(array_unique(array_filter($origins)));
+    }
+
     public function render(): View
     {
         return view('livewire.admin.social-login-settings', [
             'liveRedirectUri' => $this->liveRedirectUri(),
+            'consoleRedirectUris' => $this->consoleRedirectUris(),
+            'consoleJavaScriptOrigins' => $this->consoleJavaScriptOrigins(),
         ]);
     }
 }

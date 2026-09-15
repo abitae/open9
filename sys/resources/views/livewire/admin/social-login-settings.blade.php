@@ -16,20 +16,34 @@
             <flux:input wire:model="google_client_secret" label="Google Client Secret (vacío = no cambiar)" type="password" placeholder="GOCSPX-..." />
         </div>
 
-        <flux:input wire:model="form.google_redirect_url" label="URL de redirección autorizada" placeholder="{{ $liveRedirectUri }}" />
-        <flux:callout variant="warning" icon="exclamation-triangle">
-            Google exige esta URI exacta (https, sin barra final, sin <code>/sys</code>).
-            Cópiala en Cloud Console → Credenciales → URIs de redirección autorizados:
-            <code class="block mt-1 break-all">{{ $liveRedirectUri }}</code>
-        </flux:callout>
+        <flux:input :value="$liveRedirectUri" label="URI que envía este host ahora" disabled />
         <flux:text class="text-xs text-zinc-500">
-            Si pruebas en varios orígenes, registra cada uno: este dominio,
-            <code>http://localhost:8000/api/auth/google/callback</code>
-            y, si usas Vite, <code>http://localhost:3002/api/auth/google/callback</code>.
-            Tras el login, el backend vuelve al origen que inició el flujo
-            (<code>APP_URL</code>: <code>{{ rtrim((string) config('app.url'), '/') ?: '—' }}</code>
-            / <code>FRONTEND_URL</code>: <code>{{ rtrim((string) config('app.frontend_url'), '/') ?: '—' }}</code>).
+            Laravel arma el callback con el dominio de esta petición. Guardar aquí no lo registra en Google.
         </flux:text>
+
+        <flux:callout variant="warning" icon="exclamation-triangle">
+            En Cloud Console → Credenciales → ID de cliente OAuth pega estas URIs (https, sin barra final, sin <code>/sys</code>).
+            Si falta la del host desde el que entra el cliente, Google responde 400 redirect_uri_mismatch.
+        </flux:callout>
+
+        <div class="grid gap-4 md:grid-cols-2">
+            <div class="space-y-2">
+                <flux:heading size="sm">URIs de redirección autorizados</flux:heading>
+                <ul class="space-y-1 text-xs">
+                    @foreach ($consoleRedirectUris as $uri)
+                        <li><code class="break-all">{{ $uri }}</code></li>
+                    @endforeach
+                </ul>
+            </div>
+            <div class="space-y-2">
+                <flux:heading size="sm">Orígenes de JavaScript autorizados</flux:heading>
+                <ul class="space-y-1 text-xs">
+                    @foreach ($consoleJavaScriptOrigins as $origin)
+                        <li><code class="break-all">{{ $origin }}</code></li>
+                    @endforeach
+                </ul>
+            </div>
+        </div>
 
         <flux:button type="submit" variant="primary">Guardar</flux:button>
     </form>
@@ -39,8 +53,9 @@
         <ol class="list-decimal space-y-1 pl-4">
             <li>Entra a Google Cloud Console y crea (o selecciona) un proyecto.</li>
             <li>Ve a «APIs y servicios» → «Credenciales» → «Crear credenciales» → «ID de cliente de OAuth».</li>
-            <li>Tipo de aplicación: «Aplicación web». Agrega la URI de redirección de arriba.</li>
+            <li>Tipo de aplicación: «Aplicación web». Agrega todas las URIs de redirección y orígenes de JavaScript de arriba.</li>
             <li>Copia el Client ID y el Client Secret y pégalos aquí.</li>
+            <li>Espera 1–5 minutos y prueba «Continuar con Google» en el mismo dominio que fallaba.</li>
         </ol>
     </div>
 </section>

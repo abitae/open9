@@ -41,7 +41,7 @@ class ClientPasswordResetMail extends Mailable implements ShouldQueue
     {
         $base = rtrim((string) (config('app.url') ?: config('app.frontend_url')), '/');
 
-        return $base.'/restablecer-contraseña?'.http_build_query([
+        return $base.'/restablecer-contrasena?'.http_build_query([
             'token' => $this->token,
             'email' => $this->client->email,
         ]);

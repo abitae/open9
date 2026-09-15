@@ -8,10 +8,12 @@ use App\Mail\ClientGooglePasswordHintMail;
 use App\Models\Client;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Validation\Rules\Password as PasswordRule;
 use Illuminate\Validation\ValidationException;
+use Throwable;
 
 class ClientPasswordResetController extends Controller
 {
@@ -24,11 +26,18 @@ class ClientPasswordResetController extends Controller
         $client = Client::query()->where('email', $data['email'])->first();
 
         if ($client !== null && $client->status === RecordStatus::Active) {
-            if ($client->password === null) {
-                Mail::to($client->email)->send(new ClientGooglePasswordHintMail($client));
-            } else {
-                Password::broker('clients')->sendResetLink([
+            try {
+                if ($client->password === null) {
+                    Mail::to($client->email)->send(new ClientGooglePasswordHintMail($client));
+                } else {
+                    Password::broker('clients')->sendResetLink([
+                        'email' => $client->email,
+                    ]);
+                }
+            } catch (Throwable $exception) {
+                Log::error('No se pudo enviar el correo de recuperación de contraseña.', [
                     'email' => $client->email,
+                    'message' => $exception->getMessage(),
                 ]);
             }
         }

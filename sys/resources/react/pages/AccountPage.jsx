@@ -10,6 +10,10 @@ const TABS = [
     { id: 'orders', label: 'Pedidos' },
 ];
 
+function isUnauthorized(error) {
+    return error instanceof ApiError && error.status === 401;
+}
+
 export default function AccountPage() {
     const [tab, setTab] = useState('profile');
     const { logout } = useAuth();
@@ -44,15 +48,47 @@ export default function AccountPage() {
 }
 
 function ProfileTab() {
-    const [form, setForm] = useState({ name: '', email: '', phone: '', current_password: '', password: '', password_confirmation: '' });
-    const [status, setStatus] = useState('loading');
+    const { client } = useAuth();
+    const [form, setForm] = useState({
+        name: client?.name ?? '',
+        email: client?.email ?? '',
+        phone: client?.phone ?? '',
+        current_password: '',
+        password: '',
+        password_confirmation: '',
+    });
+    const [status, setStatus] = useState(client ? 'idle' : 'loading');
     const [error, setError] = useState('');
 
     useEffect(() => {
-        api.get('/account/profile').then(({ client }) => {
-            setForm((current) => ({ ...current, name: client.name ?? '', email: client.email ?? '', phone: client.phone ?? '' }));
-            setStatus('idle');
-        });
+        let active = true;
+
+        api.get('/account/profile')
+            .then(({ client: current }) => {
+                if (!active) {
+                    return;
+                }
+
+                setForm((currentForm) => ({
+                    ...currentForm,
+                    name: current.name ?? '',
+                    email: current.email ?? '',
+                    phone: current.phone ?? '',
+                }));
+                setStatus('idle');
+            })
+            .catch((loadError) => {
+                if (!active || isUnauthorized(loadError)) {
+                    return;
+                }
+
+                setError(loadError instanceof ApiError ? loadError.message : 'No pudimos cargar tu perfil.');
+                setStatus('idle');
+            });
+
+        return () => {
+            active = false;
+        };
     }, []);
 
     const handleSubmit = async (event) => {
@@ -73,6 +109,10 @@ function ProfileTab() {
             setForm((current) => ({ ...current, current_password: '', password: '', password_confirmation: '' }));
             setStatus('saved');
         } catch (submitError) {
+            if (isUnauthorized(submitError)) {
+                return;
+            }
+
             setError(submitError instanceof ApiError ? submitError.message : 'No pudimos guardar tus datos.');
             setStatus('idle');
         }
@@ -136,7 +176,16 @@ function AddressesTab() {
     const [form, setForm] = useState({ recipient_name: '', phone: '', line1: '', line2: '', city: '', region: '', country: '', postal_code: '' });
     const [error, setError] = useState('');
 
-    const load = () => api.get('/account/addresses').then(({ addresses: list }) => setAddresses(list));
+    const load = () => api.get('/account/addresses')
+        .then(({ addresses: list }) => setAddresses(list))
+        .catch((loadError) => {
+            if (isUnauthorized(loadError)) {
+                return;
+            }
+
+            setAddresses([]);
+            setError(loadError instanceof ApiError ? loadError.message : 'No pudimos cargar tus direcciones.');
+        });
 
     useEffect(() => {
         load();
@@ -151,18 +200,34 @@ function AddressesTab() {
             setForm({ recipient_name: '', phone: '', line1: '', line2: '', city: '', region: '', country: '', postal_code: '' });
             load();
         } catch (submitError) {
+            if (isUnauthorized(submitError)) {
+                return;
+            }
+
             setError(submitError instanceof ApiError ? submitError.message : 'No pudimos guardar la dirección.');
         }
     };
 
     const setDefault = async (id) => {
-        await api.post(`/account/addresses/${id}/default`);
-        load();
+        try {
+            await api.post(`/account/addresses/${id}/default`);
+            load();
+        } catch (actionError) {
+            if (!isUnauthorized(actionError)) {
+                setError(actionError instanceof ApiError ? actionError.message : 'No pudimos actualizar la dirección.');
+            }
+        }
     };
 
     const remove = async (id) => {
-        await api.delete(`/account/addresses/${id}`);
-        load();
+        try {
+            await api.delete(`/account/addresses/${id}`);
+            load();
+        } catch (actionError) {
+            if (!isUnauthorized(actionError)) {
+                setError(actionError instanceof ApiError ? actionError.message : 'No pudimos eliminar la dirección.');
+            }
+        }
     };
 
     return (
@@ -214,13 +279,37 @@ function AddressesTab() {
 
 function OrdersTab() {
     const [orders, setOrders] = useState(null);
+    const [error, setError] = useState('');
 
     useEffect(() => {
-        api.get('/account/orders').then(({ data }) => setOrders(data));
+        let active = true;
+
+        api.get('/account/orders')
+            .then(({ data }) => {
+                if (active) {
+                    setOrders(data);
+                }
+            })
+            .catch((loadError) => {
+                if (!active || isUnauthorized(loadError)) {
+                    return;
+                }
+
+                setOrders([]);
+                setError(loadError instanceof ApiError ? loadError.message : 'No pudimos cargar tus pedidos.');
+            });
+
+        return () => {
+            active = false;
+        };
     }, []);
 
     if (!orders) {
         return <div className="h-40 animate-pulse rounded-2xl bg-white/5" />;
+    }
+
+    if (error) {
+        return <p className="text-sm text-red-400">{error}</p>;
     }
 
     if (orders.length === 0) {

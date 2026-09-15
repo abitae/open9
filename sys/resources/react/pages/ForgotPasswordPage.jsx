@@ -20,7 +20,10 @@ export default function ForgotPasswordPage() {
             const payload = await forgotPassword(email);
             setStatus(payload?.message ?? 'Si el correo está registrado, te enviamos instrucciones.');
         } catch (submitError) {
-            setError(submitError instanceof ApiError ? submitError.message : 'No pudimos enviar las instrucciones.');
+            const message = submitError instanceof ApiError && submitError.status >= 500
+                ? 'No pudimos enviar las instrucciones. Intenta de nuevo en un momento.'
+                : (submitError instanceof ApiError ? submitError.message : 'No pudimos enviar las instrucciones.');
+            setError(message);
         } finally {
             setIsSubmitting(false);
         }

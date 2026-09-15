@@ -22,7 +22,11 @@ export default function AuthCallbackPage() {
 
         if (token) {
             const next = consumeAuthRedirect('/cuenta');
-            loginWithToken(token).then(() => navigate(next, { replace: true }));
+            loginWithToken(token)
+                .then(() => navigate(next, { replace: true }))
+                .catch(() => {
+                    setError('No pudimos completar el acceso con Google.');
+                });
 
             return;
         }

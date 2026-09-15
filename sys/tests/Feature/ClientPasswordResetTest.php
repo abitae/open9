@@ -45,7 +45,7 @@ it('queues a reset mail for an active client with a password', function (): void
     queuedPasswordResetToken('ada@example.com');
     Mail::assertQueued(ClientPasswordResetMail::class, function (ClientPasswordResetMail $mail) use ($client): bool {
         return $mail->hasTo($client->email)
-            && str_contains($mail->resetUrl(), '/restablecer-contraseña?')
+            && str_contains($mail->resetUrl(), '/restablecer-contrasena?')
             && str_contains($mail->resetUrl(), 'token=')
             && str_contains($mail->resetUrl(), rawurlencode($client->email));
     });
