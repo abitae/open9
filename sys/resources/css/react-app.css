@@ -9,6 +9,8 @@
     /* Colores de marca confirmados en resources/css/app.css y public/index.html (theme-color). */
     --color-brand: #0077ff;
     --color-brand-dark: #0044aa;
+    --color-brand-green: #00d26a;
+    --color-brand-green-dark: #00a854;
     --color-open9-black: #0d0d0d;
     --color-tech-accent: #0077ff;
 }
@@ -73,7 +75,7 @@ a {
     }
 
     .card-hover {
-        @apply transition duration-200 hover:-translate-y-1 hover:shadow-xl hover:shadow-black/30;
+        @apply relative z-10 !bg-open9-black/90 transition duration-200 hover:-translate-y-1 hover:shadow-xl hover:shadow-black/30;
     }
 
     .nav-blur {
@@ -197,9 +199,161 @@ a {
         animation: pulse-soft 1.6s ease-in-out infinite;
     }
 
-    .rocket-decoration {
-        @apply pointer-events-none absolute opacity-[0.12];
-        animation: rocket-drift 9s ease-in-out infinite;
+    .space-field {
+        @apply pointer-events-none fixed inset-0 z-0 overflow-hidden;
+        perspective: 1200px;
+    }
+
+    .space-star {
+        @apply absolute rounded-full bg-white/70;
+        animation: star-twinkle 3.2s ease-in-out infinite;
+    }
+
+    .space-star-far {
+        opacity: 0.45;
+        animation: star-twinkle-far var(--twinkle, 4.2s) ease-in-out infinite, star-parallax-far 90s linear infinite;
+    }
+
+    .space-star-mid {
+        opacity: 0.7;
+        box-shadow: 0 0 4px rgb(255 255 255 / 0.35);
+        animation: star-twinkle var(--twinkle, 3.2s) ease-in-out infinite, star-parallax-mid 70s linear infinite;
+    }
+
+    .space-star-near {
+        opacity: 0.9;
+        box-shadow: 0 0 6px rgb(255 255 255 / 0.55);
+        animation: star-twinkle-near var(--twinkle, 2.4s) ease-in-out infinite, star-parallax-near 48s linear infinite;
+    }
+
+    .space-star-green {
+        background-color: var(--color-brand-green);
+        box-shadow: 0 0 7px rgb(0 210 106 / 0.7);
+    }
+
+    .space-cruise {
+        @apply absolute top-0 left-0;
+        will-change: transform, opacity;
+        animation-timing-function: linear;
+        animation-iteration-count: infinite;
+        transform-origin: center;
+    }
+
+    .rocket-cruise {
+        filter: drop-shadow(0 0 10px rgb(0 210 106 / 0.4));
+    }
+
+    .rocket-cruise-a {
+        animation-name: rocket-arc-climb;
+        animation-duration: 26s;
+    }
+
+    .rocket-cruise-b {
+        animation-name: rocket-arc-descent;
+        animation-duration: 32s;
+    }
+
+    .rocket-cruise-c {
+        animation-name: rocket-orbit-skim;
+        animation-duration: 38s;
+    }
+
+    .planet-track {
+        @apply relative;
+        offset-rotate: 0deg;
+        animation-name: travel-path;
+        animation-timing-function: linear;
+    }
+
+    .planet-track-a {
+        offset-path: ellipse(56vw 20vh at 48% 24%);
+        animation-duration: 86s;
+        filter: drop-shadow(0 0 22px rgb(0 119 255 / 0.35));
+    }
+
+    .planet-track-b {
+        offset-path: ellipse(48vw 16vh at 54% 68%);
+        animation-duration: 110s;
+        animation-direction: reverse;
+        filter: drop-shadow(0 0 18px rgb(0 210 106 / 0.3));
+    }
+
+    .planet-track-c {
+        offset-path: ellipse(62vw 26vh at 50% 46%);
+        animation-duration: 64s;
+        filter: drop-shadow(0 0 14px rgb(0 168 84 / 0.28));
+    }
+
+    .planet-spin {
+        transform-box: fill-box;
+        transform-origin: center;
+        animation: planet-spin 48s linear infinite;
+    }
+
+    .satellite-orbit {
+        @apply absolute left-1/2 top-1/2;
+        margin: -1.25rem 0 0 -1.25rem;
+        animation-name: satellite-orbit-depth;
+        animation-duration: 16s;
+        animation-timing-function: linear;
+        animation-iteration-count: infinite;
+        filter: drop-shadow(0 0 6px rgb(0 210 106 / 0.45));
+    }
+
+    .satellite-free {
+        offset-path: ellipse(38vw 22vh at 42% 40%);
+        offset-rotate: 0deg;
+        animation-name: travel-path;
+        animation-duration: 34s;
+        filter: drop-shadow(0 0 8px rgb(0 210 106 / 0.4));
+    }
+
+    .satellite-free-b {
+        offset-path: ellipse(28vw 14vh at 70% 58%);
+        offset-rotate: 0deg;
+        animation-name: travel-path;
+        animation-duration: 28s;
+        animation-direction: reverse;
+        filter: drop-shadow(0 0 6px rgb(0 119 255 / 0.4));
+    }
+
+    .satellite-yaw {
+        animation: asteroid-tumble 18s linear infinite;
+        transform-origin: center;
+    }
+
+    .asteroid-track {
+        offset-rotate: 0deg;
+        animation-name: travel-path;
+        filter: drop-shadow(0 4px 8px rgb(0 0 0 / 0.4));
+    }
+
+    .asteroid-a {
+        offset-path: ellipse(44vw 30vh at 50% 52%);
+        animation-duration: 52s;
+    }
+
+    .asteroid-b {
+        offset-path: ellipse(36vw 12vh at 30% 30%);
+        animation-duration: 40s;
+        animation-direction: reverse;
+    }
+
+    .asteroid-c {
+        offset-path: ellipse(58vw 18vh at 62% 78%);
+        animation-duration: 70s;
+        opacity: 0.7;
+    }
+
+    .asteroid-tumble {
+        animation: asteroid-tumble 11s linear infinite;
+        transform-origin: center;
+    }
+
+    .comet-streak {
+        animation-name: comet-pass;
+        animation-duration: 22s;
+        filter: drop-shadow(0 0 12px rgb(0 210 106 / 0.45));
     }
 }
 
@@ -238,8 +392,12 @@ a {
 }
 
 @keyframes rocket-flame-flicker {
-    from { transform: scaleY(0.85) scaleX(0.92); }
-    to { transform: scaleY(1.15) scaleX(1.05); }
+    0% { transform: scaleY(0.82) scaleX(0.94) translateY(1px); }
+    18% { transform: scaleY(1.22) scaleX(1.06) translateY(-2px); }
+    36% { transform: scaleY(0.9) scaleX(0.88); }
+    54% { transform: scaleY(1.28) scaleX(1.02) translateY(-1px); }
+    72% { transform: scaleY(0.86) scaleX(1.1); }
+    100% { transform: scaleY(1.12) scaleX(0.96); }
 }
 
 @keyframes pulse-soft {
@@ -247,9 +405,169 @@ a {
     50% { opacity: 1; }
 }
 
-@keyframes rocket-drift {
-    0%, 100% { transform: translate(0, 0) rotate(-8deg); }
-    50% { transform: translate(-10px, -22px) rotate(-4deg); }
+@keyframes travel-path {
+    from { offset-distance: 0%; }
+    to { offset-distance: 100%; }
+}
+
+@keyframes rocket-arc-climb {
+    0% {
+        transform: translate3d(-16vw, 108vh, 0) rotate(18deg) scale(0.72);
+        opacity: 0;
+    }
+    6% { opacity: 0.9; }
+    28% {
+        transform: translate3d(18vw, 62vh, 0) rotate(32deg) scale(0.92);
+    }
+    52% {
+        transform: translate3d(48vw, 28vh, 0) rotate(44deg) scale(1.08);
+        opacity: 1;
+    }
+    78% {
+        transform: translate3d(82vw, 4vh, 0) rotate(56deg) scale(0.86);
+    }
+    92% { opacity: 0.85; }
+    100% {
+        transform: translate3d(118vw, -20vh, 0) rotate(64deg) scale(0.62);
+        opacity: 0;
+    }
+}
+
+@keyframes rocket-arc-descent {
+    0% {
+        transform: translate3d(118vw, 12vh, 0) rotate(-28deg) scale(0.7);
+        opacity: 0;
+    }
+    8% { opacity: 0.85; }
+    30% {
+        transform: translate3d(74vw, 38vh, 0) rotate(-42deg) scale(1);
+    }
+    58% {
+        transform: translate3d(36vw, 58vh, 0) rotate(-50deg) scale(1.06);
+        opacity: 1;
+    }
+    82% {
+        transform: translate3d(8vw, 86vh, 0) rotate(-38deg) scale(0.8);
+    }
+    100% {
+        transform: translate3d(-18vw, 118vh, 0) rotate(-22deg) scale(0.58);
+        opacity: 0;
+    }
+}
+
+@keyframes rocket-orbit-skim {
+    0% {
+        transform: translate3d(-20vw, 44vh, 0) rotate(78deg) scale(0.78);
+        opacity: 0;
+    }
+    7% { opacity: 0.8; }
+    22% {
+        transform: translate3d(16vw, 36vh, 0) rotate(82deg) scale(0.9);
+    }
+    48% {
+        transform: translate3d(52vw, 48vh, 0) rotate(96deg) scale(1.04);
+        opacity: 1;
+    }
+    74% {
+        transform: translate3d(88vw, 30vh, 0) rotate(74deg) scale(0.88);
+    }
+    100% {
+        transform: translate3d(122vw, 18vh, 0) rotate(68deg) scale(0.7);
+        opacity: 0;
+    }
+}
+
+@keyframes comet-pass {
+    0%, 18% {
+        transform: translate3d(-28vw, 6vh, 0) rotate(-18deg) scale(0.7);
+        opacity: 0;
+    }
+    24% {
+        opacity: 0.95;
+        transform: translate3d(-8vw, 14vh, 0) rotate(-18deg) scale(0.92);
+    }
+    42% {
+        transform: translate3d(48vw, 32vh, 0) rotate(-16deg) scale(1.05);
+        opacity: 1;
+    }
+    56% {
+        transform: translate3d(108vw, 48vh, 0) rotate(-14deg) scale(0.82);
+        opacity: 0;
+    }
+    100% {
+        transform: translate3d(108vw, 48vh, 0) rotate(-14deg) scale(0.82);
+        opacity: 0;
+    }
+}
+
+@keyframes planet-spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+@keyframes satellite-orbit-depth {
+    0% {
+        transform: rotate(0deg) translateX(4.6rem) rotate(12deg) scale(0.55);
+        opacity: 0.35;
+        z-index: 0;
+    }
+    25% {
+        transform: rotate(90deg) translateX(4.6rem) rotate(-8deg) scale(0.9);
+        opacity: 0.9;
+        z-index: 2;
+    }
+    50% {
+        transform: rotate(180deg) translateX(4.6rem) rotate(6deg) scale(1.12);
+        opacity: 1;
+        z-index: 2;
+    }
+    75% {
+        transform: rotate(270deg) translateX(4.6rem) rotate(18deg) scale(0.88);
+        opacity: 0.85;
+        z-index: 2;
+    }
+    100% {
+        transform: rotate(360deg) translateX(4.6rem) rotate(12deg) scale(0.55);
+        opacity: 0.35;
+        z-index: 0;
+    }
+}
+
+@keyframes asteroid-tumble {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(-360deg); }
+}
+
+@keyframes star-twinkle {
+    0%, 100% { opacity: 0.35; }
+    50% { opacity: 0.95; }
+}
+
+@keyframes star-twinkle-far {
+    0%, 100% { opacity: 0.18; }
+    50% { opacity: 0.5; }
+}
+
+@keyframes star-twinkle-near {
+    0%, 100% { opacity: 0.55; }
+    40% { opacity: 1; }
+    55% { opacity: 0.7; }
+    70% { opacity: 1; }
+}
+
+@keyframes star-parallax-far {
+    from { transform: translate3d(0, 0, 0); }
+    to { transform: translate3d(-18px, 8px, 0); }
+}
+
+@keyframes star-parallax-mid {
+    from { transform: translate3d(0, 0, 0); }
+    to { transform: translate3d(-36px, 14px, 0); }
+}
+
+@keyframes star-parallax-near {
+    from { transform: translate3d(0, 0, 0); }
+    to { transform: translate3d(-58px, 22px, 0); }
 }
 
 /* Revela una sección con fade+slide la primera vez que entra al viewport
@@ -302,8 +620,24 @@ a {
     .preloader-rocket,
     .rocket-flame,
     .preloader-label,
-    .rocket-decoration {
+    .rocket-cruise,
+    .space-cruise,
+    .planet-spin,
+    .planet-track,
+    .satellite-orbit,
+    .satellite-free,
+    .satellite-free-b,
+    .satellite-yaw,
+    .asteroid-track,
+    .asteroid-tumble,
+    .space-star {
         animation: none;
+        offset-path: none;
+    }
+
+    .space-field,
+    .rocket-field {
+        display: none;
     }
 
     .btn-primary,

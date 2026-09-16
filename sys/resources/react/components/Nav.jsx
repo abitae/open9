@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
+import { ShoppingCart } from 'lucide-react';
 import { useAuth } from '../lib/auth';
 import { useCart } from '../lib/cart';
 import { useSite } from '../lib/site';
@@ -62,10 +63,15 @@ export default function Nav() {
                 </div>
 
                 <div className="flex items-center gap-3">
-                    <NavLink to="/carrito" data-cart-target className="nav-link relative inline-block">
-                        Carrito
+                    <NavLink
+                        to="/carrito"
+                        data-cart-target
+                        aria-label={totalQuantity > 0 ? `Carrito, ${totalQuantity} artículos` : 'Carrito'}
+                        className="nav-link relative inline-flex items-center justify-center p-1"
+                    >
+                        <ShoppingCart className="size-5" strokeWidth={2} />
                         {totalQuantity > 0 && (
-                            <span className="absolute -right-3 -top-2 flex size-5 items-center justify-center rounded-full bg-brand text-[11px] font-semibold text-white">
+                            <span className="absolute -right-1.5 -top-1.5 flex size-5 items-center justify-center rounded-full bg-brand text-[11px] font-semibold text-white">
                                 {totalQuantity}
                             </span>
                         )}

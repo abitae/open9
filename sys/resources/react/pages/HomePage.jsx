@@ -4,7 +4,6 @@ import SectionHeader from '../components/SectionHeader';
 import LoadingGrid from '../components/LoadingGrid';
 import Icon from '../components/Icon';
 import Reveal from '../components/Reveal';
-import RocketIcon from '../components/RocketIcon';
 import SafeImage from '../components/SafeImage';
 import { api } from '../lib/api';
 
@@ -415,7 +414,6 @@ export default function HomePage() {
             {sections?.cta_contact && (
                 <Reveal as="section" className="mx-auto max-w-6xl px-4 py-20 sm:px-6">
                     <div className="relative overflow-hidden rounded-3xl border border-brand/30 bg-brand/10 p-10 text-center sm:p-16">
-                        <RocketIcon className="rocket-decoration -right-8 -top-6 size-28 rotate-[22deg]" />
                         {sections.cta_contact.label && <span className="badge-tech mb-4">{sections.cta_contact.label}</span>}
                         <h2 className="text-2xl font-bold text-white sm:text-3xl">
                             {[sections.cta_contact.title, sections.cta_contact.title_highlight].filter(Boolean).join(' ')}

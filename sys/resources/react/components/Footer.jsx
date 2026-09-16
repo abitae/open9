@@ -12,7 +12,7 @@ export default function Footer() {
     const scrollToTop = () => window.scrollTo({ top: 0, behavior: 'smooth' });
 
     return (
-        <footer className="mt-24 border-t border-white/10 bg-black/30">
+        <footer className="relative z-10 mt-24 border-t border-white/10 bg-black/30">
             <Reveal as="div" className="border-b border-white/10 bg-brand/10">
                 <div className="mx-auto flex max-w-6xl flex-col items-center gap-4 px-4 py-8 text-center sm:flex-row sm:justify-between sm:px-6 sm:text-left">
                     <div>
